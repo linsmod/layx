@@ -748,6 +748,46 @@ void test_space_distribution() {
     }
 }
 
+static void test_min_max_size_layout(void) {
+    printf("\n=== Test: Min/Max Size Layout Constraints ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    // 创建容器 200x200
+    layx_id container = layx_item(&ctx);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_size(&ctx, container, 200, 200);
+
+    // 子项 1：min_width = 300，应该突破容器宽度被撑开
+    layx_id item1 = layx_item(&ctx);
+    layx_set_min_width(&ctx, item1, 300);
+    layx_set_width(&ctx, item1, 50); // 故意设很小
+    layx_set_height(&ctx, item1, 50);
+    layx_push(&ctx, container, item1);
+
+    // 子项 2：max_width = 50，应该被限制在 50
+    layx_id item2 = layx_item(&ctx);
+    layx_set_max_width(&ctx, item2, 50);
+    layx_set_width(&ctx, item2, 100); // 故意设很大
+    layx_set_height(&ctx, item2, 50);
+    layx_push(&ctx, container, item2);
+
+    layx_run_context(&ctx);
+
+    layx_vec4 rect1 = layx_get_rect(&ctx, item1);
+    layx_vec4 rect2 = layx_get_rect(&ctx, item2);
+
+    // item1 宽度应 >= 300
+    assert_true(rect1[2] >= 300, "min_width 生效：item1 宽度被撑开到 300");
+    // item2 宽度应 <= 50
+    assert_true(rect2[2] <= 50, "max_width 生效：item2 宽度被限制在 50");
+
+    layx_destroy_context(&ctx);
+    printf("  ✓ Min/Max Size Layout 测试完成\n");
+}
+
 int main() {
     printf("===========================================\n");
     printf("   LAYX Common Layout Patterns Test Suite\n");
@@ -766,6 +806,7 @@ int main() {
     test_flex_grow_shrink();
     test_align_items();
     test_space_distribution();
+    test_min_max_size_layout();
 
     // Print summary
     printf("\n===========================================\n");

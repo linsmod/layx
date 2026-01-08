@@ -896,46 +896,65 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
 
     ctx->rects[item][dim] = pitem->margins[dim];
 
+    layx_scalar result_size;
     if (pitem->size[dim] != 0) {
-        ctx->rects[item][2 + dim] = pitem->size[dim];
-        return;
-    }
-
-    layx_scalar cal_size;
-    layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
-    uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
-    layx_flex_wrap wrap = (layx_flex_wrap)(flags & LAYX_FLEX_WRAP_MASK);
-    
-    if (model != 0) {
-        bool is_wrapped = (wrap != LAYX_FLEX_WRAP_NOWRAP);
-        bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
+        result_size = pitem->size[dim];
+    } else {
+        layx_scalar cal_size;
+        layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
+        uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
+        layx_flex_wrap wrap = (layx_flex_wrap)(flags & LAYX_FLEX_WRAP_MASK);
         
-        if (is_wrapped) {
-            if (is_row_direction) {
-                if (dim == 0)
-                    cal_size = layx_calc_wrapped_stacked_size(ctx, item, 0);
-                else
-                    cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 1);
+        if (model != 0) {
+            bool is_wrapped = (wrap != LAYX_FLEX_WRAP_NOWRAP);
+            bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
+            
+            if (is_wrapped) {
+                if (is_row_direction) {
+                    if (dim == 0)
+                        cal_size = layx_calc_wrapped_stacked_size(ctx, item, 0);
+                    else
+                        cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 1);
+                } else {
+                    if (dim == 1)
+                        cal_size = layx_calc_wrapped_stacked_size(ctx, item, 1);
+                    else
+                        cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 0);
+                }
             } else {
-                if (dim == 1)
-                    cal_size = layx_calc_wrapped_stacked_size(ctx, item, 1);
-                else
-                    cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 0);
+                if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
+                    cal_size = layx_calc_stacked_size(ctx, item, dim);
+                } else {
+                    cal_size = layx_calc_overlayed_size(ctx, item, dim);
+                }
             }
         } else {
-            if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
-                cal_size = layx_calc_stacked_size(ctx, item, dim);
-            } else {
-                cal_size = layx_calc_overlayed_size(ctx, item, dim);
-            }
+            cal_size = layx_calc_overlayed_size(ctx, item, dim);
         }
-    } else {
-        cal_size = layx_calc_overlayed_size(ctx, item, dim);
+
+        cal_size += pitem->padding[dim] + pitem->border[dim] 
+                 + pitem->padding[dim + 2] + pitem->border[dim + 2];
+        result_size = cal_size;
     }
 
-    cal_size += pitem->padding[dim] + pitem->border[dim] 
-             + pitem->padding[dim + 2] + pitem->border[dim + 2];
-    ctx->rects[item][2 + dim] = cal_size;
+    // Apply min/max size constraints
+    if (dim == 0) { // width
+        if (pitem->min_size[0] > 0 && result_size < pitem->min_size[0]) {
+            result_size = pitem->min_size[0];
+        }
+        if (pitem->max_size[0] > 0 && result_size > pitem->max_size[0]) {
+            result_size = pitem->max_size[0];
+        }
+    } else { // height
+        if (pitem->min_size[1] > 0 && result_size < pitem->min_size[1]) {
+            result_size = pitem->min_size[1];
+        }
+        if (pitem->max_size[1] > 0 && result_size > pitem->max_size[1]) {
+            result_size = pitem->max_size[1];
+        }
+    }
+
+    ctx->rects[item][2 + dim] = result_size;
 }
 
 // Helper to arrange stacked items

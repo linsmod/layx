@@ -37,3 +37,15 @@ else()
     target_compile_options(test_layout_patterns PRIVATE -Wall -Wextra)
     target_compile_options(test_defaults PRIVATE -Wall -Wextra)
 endif()
+
+# Custom target to run all tests
+add_custom_target(tests
+    COMMAND echo "Running test_layx..."
+    COMMAND ./test_layx
+    COMMAND echo "Running test_layout_patterns..."
+    COMMAND ./test_layout_patterns
+    COMMAND echo "Running test_defaults..."
+    COMMAND ./test_defaults
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running all layout tests"
+)
