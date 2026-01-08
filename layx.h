@@ -104,11 +104,11 @@ typedef enum layx_flex_direction {
     LAYX_FLEX_DIRECTION_COLUMN_REVERSE
 } layx_flex_direction;
 
-// Flex wrap
+// Flex wrap (bits 3-4)
 typedef enum layx_flex_wrap {
-    LAYX_FLEX_WRAP_NOWRAP,
-    LAYX_FLEX_WRAP_WRAP,
-    LAYX_FLEX_WRAP_WRAP_REVERSE
+    LAYX_FLEX_WRAP_NOWRAP = 0 << 3,  // 0x0000
+    LAYX_FLEX_WRAP_WRAP = 1 << 3,    // 0x0008
+    LAYX_FLEX_WRAP_WRAP_REVERSE = 2 << 3  // 0x0010
 } layx_flex_wrap;
 
 // Justify content (bits 5-7)
@@ -140,11 +140,6 @@ typedef enum layx_align_content {
     LAYX_ALIGN_CONTENT_SPACE_AROUND = 0x2800
 } layx_align_content;
 
-// Box sizing
-typedef enum layx_box_sizing {
-    LAYX_BOX_SIZING_CONTENT_BOX,
-    LAYX_BOX_SIZING_BORDER_BOX
-} layx_box_sizing;
 
 // Align self (bits 14-16)
 typedef enum layx_align_self {
@@ -169,7 +164,6 @@ typedef struct layx_style {
     layx_scalar margin_top, margin_right, margin_bottom, margin_left;
     layx_scalar padding_top, padding_right, padding_bottom, padding_left;
     layx_scalar border_top, border_right, border_bottom, border_left;
-    layx_box_sizing box_sizing;
     layx_align_self align_self;
     layx_scalar flex_grow, flex_shrink, flex_basis;
 } layx_style;
@@ -312,12 +306,11 @@ LAYX_EXPORT void layx_set_border_ltrb(layx_context *ctx, layx_id item,
                                  layx_scalar left, layx_scalar top,
                                  layx_scalar right, layx_scalar bottom);
 
-LAYX_EXPORT void layx_set_box_sizing(layx_context *ctx, layx_id item, layx_box_sizing sizing);
 
 // Getters for box model
-LAYX_EXPORT void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left);
-LAYX_EXPORT void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left);
-LAYX_EXPORT void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left);
+LAYX_EXPORT void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
 
 // Style application
 LAYX_EXPORT void layx_style_reset(layx_style *style);

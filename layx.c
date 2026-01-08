@@ -174,7 +174,7 @@ layx_id layx_item(layx_context *ctx)
     item->min_size[0] = 0; item->min_size[1] = 0;
     item->max_size[0] = 0; item->max_size[1] = 0;
     item->flex_grow = 0;
-    item->flex_shrink = 0;
+    item->flex_shrink = 1;  // CSS规范: flex-shrink默认为1
     item->flex_basis = 0;
     LAYX_MEMSET(&ctx->rects[idx], 0, sizeof(layx_vec4));
     return idx;
@@ -659,15 +659,9 @@ void layx_set_border_ltrb(layx_context *ctx, layx_id item,
     pitem->border[3] = bottom;
 }
 
-void layx_set_box_sizing(layx_context *ctx, layx_id item, layx_box_sizing sizing)
-{
-    // Box sizing stored in user data if needed
-    // For now, we just store it in flags if we want to use it
-    (void)sizing;
-}
 
 // Getters for box model
-void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left)
+void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 margins = pitem->margins;
@@ -677,7 +671,7 @@ void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *top, layx_sca
     *bottom = margins[3];
 }
 
-void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left)
+void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 padding = pitem->padding;
@@ -687,7 +681,7 @@ void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *top, layx_sc
     *bottom = padding[3];
 }
 
-void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom, layx_scalar *left)
+void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 border = pitem->border;
