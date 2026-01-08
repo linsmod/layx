@@ -6,3 +6,4 @@ debug_justify
 debug_space
 debug_spacearound
 debug_spacebetween
+*.json

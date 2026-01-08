@@ -524,6 +524,53 @@ void test_flags_initialization(void) {
     layx_destroy_context(&ctx);
 }
 
+static void test_getter_functions(void) {
+    printf("\n=== Test: Box Model Getter函数 ===\n");
+    
+    layx_context ctx;
+    layx_id root, container, item;
+    layx_scalar l, t, r, b;
+    
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+    root = layx_item(&ctx);
+    container = layx_item(&ctx);
+    item = layx_item(&ctx);
+    layx_push(&ctx, LAYX_INVALID_ID, root);
+    layx_push(&ctx, root, container);
+    layx_push(&ctx, container, item);
+    
+    // 测试默认值为0
+    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认margin getter返回0");
+    layx_get_padding_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认padding getter返回0");
+    layx_get_border_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认border getter返回0");
+    
+    // 测试设置后返回值正确
+    layx_set_margin_ltrb(&ctx, item, 10, 20, 30, 40);
+    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 10 && t == 20 && r == 30 && b == 40, "margin getter正确返回ltrb值(10,20,30,40)");
+    
+    layx_set_padding_ltrb(&ctx, item, 5, 15, 25, 35);
+    layx_get_padding_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 5 && t == 15 && r == 25 && b == 35, "padding getter正确返回ltrb值(5,15,25,35)");
+    
+    layx_set_border_ltrb(&ctx, item, 1, 2, 3, 4);
+    layx_get_border_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 1 && t == 2 && r == 3 && b == 4, "border getter正确返回ltrb值(1,2,3,4)");
+    
+    // 测试混合设置
+    layx_set_margin_left(&ctx, item, 100);
+    layx_set_margin_top(&ctx, item, 200);
+    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
+    TEST_ASSERT(l == 100 && t == 200 && r == 30 && b == 40, "混合设置后margin getter正确返回(100,200,30,40)");
+    
+    layx_destroy_context(&ctx);
+    printf("  \u2713 margin/padding/border getter函数测试完成\n");
+}
+
 int main(void) {
     printf("===========================================\n");
     printf("   LayX CSS规范默认值测试套件\n");
@@ -541,6 +588,7 @@ int main(void) {
     test_alignment_defaults();
     test_complete_defaults();
     test_flags_initialization();
+    test_getter_functions();
     
     // 输出测试结果
     printf("\n===========================================\n");

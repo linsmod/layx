@@ -661,7 +661,7 @@ void layx_set_border_ltrb(layx_context *ctx, layx_id item,
 
 
 // Getters for box model
-void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
+void layx_get_margin_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 margins = pitem->margins;
@@ -671,7 +671,7 @@ void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *left, layx_sc
     *bottom = margins[3];
 }
 
-void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
+void layx_get_padding_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 padding = pitem->padding;
@@ -681,7 +681,7 @@ void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *left, layx_s
     *bottom = padding[3];
 }
 
-void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
+void layx_get_border_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 border = pitem->border;

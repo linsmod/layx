@@ -308,9 +308,9 @@ LAYX_EXPORT void layx_set_border_ltrb(layx_context *ctx, layx_id item,
 
 
 // Getters for box model
-LAYX_EXPORT void layx_get_margin(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
-LAYX_EXPORT void layx_get_padding(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
-LAYX_EXPORT void layx_get_border(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_margin_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_padding_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_border_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
 
 // Style application
 LAYX_EXPORT void layx_style_reset(layx_style *style);
