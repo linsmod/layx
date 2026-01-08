@@ -536,7 +536,6 @@ static void test_getter_functions(void) {
     root = layx_item(&ctx);
     container = layx_item(&ctx);
     item = layx_item(&ctx);
-    layx_push(&ctx, LAYX_INVALID_ID, root);
     layx_push(&ctx, root, container);
     layx_push(&ctx, container, item);
     
