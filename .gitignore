@@ -1,2 +1,8 @@
 .jsondo/
 build/
+debug_align
+debug_flexend
+debug_justify
+debug_space
+debug_spacearound
+debug_spacebetween

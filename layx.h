@@ -111,33 +111,33 @@ typedef enum layx_flex_wrap {
     LAYX_FLEX_WRAP_WRAP_REVERSE
 } layx_flex_wrap;
 
-// Justify content
+// Justify content (bits 5-7)
 typedef enum layx_justify_content {
-    LAYX_JUSTIFY_FLEX_START,
-    LAYX_JUSTIFY_CENTER,
-    LAYX_JUSTIFY_FLEX_END,
-    LAYX_JUSTIFY_SPACE_BETWEEN,
-    LAYX_JUSTIFY_SPACE_AROUND,
-    LAYX_JUSTIFY_SPACE_EVENLY
+    LAYX_JUSTIFY_FLEX_START = 0x000,
+    LAYX_JUSTIFY_CENTER = 0x0020,
+    LAYX_JUSTIFY_FLEX_END = 0x0040,
+    LAYX_JUSTIFY_SPACE_BETWEEN = 0x0060,
+    LAYX_JUSTIFY_SPACE_AROUND = 0x0080,
+    LAYX_JUSTIFY_SPACE_EVENLY = 0x00A0
 } layx_justify_content;
 
-// Align items
+// Align items (bits 8-10)
 typedef enum layx_align_items {
-    LAYX_ALIGN_ITEMS_STRETCH,
-    LAYX_ALIGN_ITEMS_FLEX_START,
-    LAYX_ALIGN_ITEMS_CENTER,
-    LAYX_ALIGN_ITEMS_FLEX_END,
-    LAYX_ALIGN_ITEMS_BASELINE
+    LAYX_ALIGN_ITEMS_STRETCH = 0x0000,
+    LAYX_ALIGN_ITEMS_FLEX_START = 0x0100,
+    LAYX_ALIGN_ITEMS_CENTER = 0x0200,
+    LAYX_ALIGN_ITEMS_FLEX_END = 0x0300,
+    LAYX_ALIGN_ITEMS_BASELINE = 0x0400
 } layx_align_items;
 
-// Align content
+// Align content (bits 11-13)
 typedef enum layx_align_content {
-    LAYX_ALIGN_CONTENT_STRETCH,
-    LAYX_ALIGN_CONTENT_FLEX_START,
-    LAYX_ALIGN_CONTENT_CENTER,
-    LAYX_ALIGN_CONTENT_FLEX_END,
-    LAYX_ALIGN_CONTENT_SPACE_BETWEEN,
-    LAYX_ALIGN_CONTENT_SPACE_AROUND
+    LAYX_ALIGN_CONTENT_STRETCH = 0x0000,
+    LAYX_ALIGN_CONTENT_FLEX_START = 0x0800,
+    LAYX_ALIGN_CONTENT_CENTER = 0x1000,
+    LAYX_ALIGN_CONTENT_FLEX_END = 0x1800,
+    LAYX_ALIGN_CONTENT_SPACE_BETWEEN = 0x2000,
+    LAYX_ALIGN_CONTENT_SPACE_AROUND = 0x2800
 } layx_align_content;
 
 // Box sizing
@@ -146,13 +146,13 @@ typedef enum layx_box_sizing {
     LAYX_BOX_SIZING_BORDER_BOX
 } layx_box_sizing;
 
-// Align self
+// Align self (bits 14-16)
 typedef enum layx_align_self {
-    LAYX_ALIGN_SELF_AUTO,
-    LAYX_ALIGN_SELF_FLEX_START,
-    LAYX_ALIGN_SELF_CENTER,
-    LAYX_ALIGN_SELF_FLEX_END,
-    LAYX_ALIGN_SELF_STRETCH
+    LAYX_ALIGN_SELF_AUTO = 0x0000,
+    LAYX_ALIGN_SELF_FLEX_START = 0x04000,
+    LAYX_ALIGN_SELF_CENTER = 0x08000,
+    LAYX_ALIGN_SELF_FLEX_END = 0x0C000,
+    LAYX_ALIGN_SELF_STRETCH = 0x10000
 } layx_align_self;
 
 // Style structure
@@ -175,21 +175,34 @@ typedef struct layx_style {
 } layx_style;
 
 // Bit masks for internal use
+// Bit layout:
+// Bits 0-1: FLEX_DIRECTION (0x0003)
+// Bit 2: LAYOUT_MODEL (0x0004)
+// Bits 3-4: FLEX_WRAP (0x0018)
+// Bits 5-7: JUSTIFY_CONTENT (0x00E0)
+// Bits 8-10: ALIGN_ITEMS (0x0700)
+// Bits 11-13: ALIGN_CONTENT (0x3800)
+// Bits 14-16: ALIGN_SELF (0x1C000)
+// Bit 17: ITEM_INSERTED (0x20000)
+// Bit 18: SIZE_FIXED_WIDTH (0x40000)
+// Bit 19: SIZE_FIXED_HEIGHT (0x80000)
+// Bit 20: BREAK (0x100000)
+
 #define LAYX_FLEX_DIRECTION_MASK    0x0003
 #define LAYX_LAYOUT_MODEL_MASK      0x0004
 #define LAYX_FLEX_WRAP_MASK         0x0018
 #define LAYX_JUSTIFY_CONTENT_MASK   0x00E0
 #define LAYX_ALIGN_ITEMS_MASK       0x0700
 #define LAYX_ALIGN_CONTENT_MASK     0x3800
-#define LAYX_ALIGN_SELF_MASK        0x7000  // Use bits 12-14 for align-self on child items
+#define LAYX_ALIGN_SELF_MASK        0x1C000  // Use bits 14-16 for align-self
 
 // Internal flags
 enum {
-    LAYX_ITEM_INSERTED = 0x400,
-    LAYX_SIZE_FIXED_WIDTH = 0x800,
-    LAYX_SIZE_FIXED_HEIGHT = 0x1000,
+    LAYX_ITEM_INSERTED = 0x20000,
+    LAYX_SIZE_FIXED_WIDTH = 0x40000,
+    LAYX_SIZE_FIXED_HEIGHT = 0x80000,
     LAYX_SIZE_FIXED_MASK = LAYX_SIZE_FIXED_WIDTH | LAYX_SIZE_FIXED_HEIGHT,
-    LAYX_BREAK = 0x2000
+    LAYX_BREAK = 0x100000
 };
 
 // Internal alignment bit flags (for align-self implementation)
@@ -271,6 +284,9 @@ LAYX_EXPORT void layx_set_margin_left(layx_context *ctx, layx_id item, layx_scal
 LAYX_EXPORT void layx_set_margin_trbl(layx_context *ctx, layx_id item,
                                 layx_scalar top, layx_scalar right,
                                 layx_scalar bottom, layx_scalar left);
+LAYX_EXPORT void layx_set_margin_ltrb(layx_context *ctx, layx_id item,
+                                layx_scalar left, layx_scalar top,
+                                layx_scalar right, layx_scalar bottom);
 
 LAYX_EXPORT void layx_set_padding(layx_context *ctx, layx_id item, layx_scalar value);
 LAYX_EXPORT void layx_set_padding_top(layx_context *ctx, layx_id item, layx_scalar top);
@@ -280,6 +296,9 @@ LAYX_EXPORT void layx_set_padding_left(layx_context *ctx, layx_id item, layx_sca
 LAYX_EXPORT void layx_set_padding_trbl(layx_context *ctx, layx_id item,
                                  layx_scalar top, layx_scalar right,
                                  layx_scalar bottom, layx_scalar left);
+LAYX_EXPORT void layx_set_padding_ltrb(layx_context *ctx, layx_id item,
+                                 layx_scalar left, layx_scalar top,
+                                 layx_scalar right, layx_scalar bottom);
 
 LAYX_EXPORT void layx_set_border(layx_context *ctx, layx_id item, layx_scalar value);
 LAYX_EXPORT void layx_set_border_top(layx_context *ctx, layx_id item, layx_scalar top);
@@ -289,6 +308,9 @@ LAYX_EXPORT void layx_set_border_left(layx_context *ctx, layx_id item, layx_scal
 LAYX_EXPORT void layx_set_border_trbl(layx_context *ctx, layx_id item,
                                  layx_scalar top, layx_scalar right,
                                  layx_scalar bottom, layx_scalar left);
+LAYX_EXPORT void layx_set_border_ltrb(layx_context *ctx, layx_id item,
+                                 layx_scalar left, layx_scalar top,
+                                 layx_scalar right, layx_scalar bottom);
 
 LAYX_EXPORT void layx_set_box_sizing(layx_context *ctx, layx_id item, layx_box_sizing sizing);
 

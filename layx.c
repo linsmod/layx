@@ -59,19 +59,19 @@ static LAYX_FORCE_INLINE uint32_t layx_flex_wrap_to_flags(layx_flex_wrap wrap) {
 }
 
 static LAYX_FORCE_INLINE uint32_t layx_justify_content_to_flags(layx_justify_content justify) {
-    return (uint32_t)justify & LAYX_JUSTIFY_CONTENT_MASK;
+    return (uint32_t)justify;
 }
 
 static LAYX_FORCE_INLINE uint32_t layx_align_items_to_flags(layx_align_items align) {
-    return (uint32_t)align & LAYX_ALIGN_ITEMS_MASK;
+    return (uint32_t)align;
 }
 
 static LAYX_FORCE_INLINE uint32_t layx_align_content_to_flags(layx_align_content align) {
-    return (uint32_t)align & LAYX_ALIGN_CONTENT_MASK;
+    return (uint32_t)align;
 }
 
 static LAYX_FORCE_INLINE uint32_t layx_align_self_to_flags(layx_align_self align) {
-    return (uint32_t)align & LAYX_ALIGN_SELF_MASK;
+    return (uint32_t)align;
 }
 
 // Helper to check if flex container
@@ -538,6 +538,17 @@ void layx_set_margin_trbl(layx_context *ctx, layx_id item,
     pitem->margins[0] = left;
 }
 
+void layx_set_margin_ltrb(layx_context *ctx, layx_id item,
+                            layx_scalar left, layx_scalar top,
+                            layx_scalar right, layx_scalar bottom)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->margins[0] = left;
+    pitem->margins[1] = top;
+    pitem->margins[2] = right;
+    pitem->margins[3] = bottom;
+}
+
 void layx_set_padding(layx_context *ctx, layx_id item, layx_scalar value)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
@@ -582,6 +593,17 @@ void layx_set_padding_trbl(layx_context *ctx, layx_id item,
     pitem->padding[0] = left;
 }
 
+void layx_set_padding_ltrb(layx_context *ctx, layx_id item,
+                             layx_scalar left, layx_scalar top,
+                             layx_scalar right, layx_scalar bottom)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->padding[0] = left;
+    pitem->padding[1] = top;
+    pitem->padding[2] = right;
+    pitem->padding[3] = bottom;
+}
+
 void layx_set_border(layx_context *ctx, layx_id item, layx_scalar value)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
@@ -624,6 +646,17 @@ void layx_set_border_trbl(layx_context *ctx, layx_id item,
     pitem->border[2] = right;
     pitem->border[3] = bottom;
     pitem->border[0] = left;
+}
+
+void layx_set_border_ltrb(layx_context *ctx, layx_id item,
+                             layx_scalar left, layx_scalar top,
+                             layx_scalar right, layx_scalar bottom)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->border[0] = left;
+    pitem->border[1] = top;
+    pitem->border[2] = right;
+    pitem->border[3] = bottom;
 }
 
 void layx_set_box_sizing(layx_context *ctx, layx_id item, layx_box_sizing sizing)
@@ -920,7 +953,6 @@ void layx_arrange_stacked(
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     const uint32_t item_flags = pitem->flags;
-    layx_vec4 rect = ctx->rects[item];
     layx_scalar space = layx_get_internal_space(ctx, item, dim);
     layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
 
@@ -939,12 +971,15 @@ void layx_arrange_stacked(
         while (child != LAYX_INVALID_ID) {
             layx_item_t *pchild = layx_get_item(ctx, child);
             const uint32_t child_flags = pchild->flags;
-            const uint32_t flags = (child_flags & LAYX_ALIGN_SELF_MASK) >> dim;
             const uint32_t fflags = (child_flags & LAYX_SIZE_FIXED_MASK) >> dim;
             const layx_vec4 child_margins = pchild->margins;
             layx_vec4 child_rect = ctx->rects[child];
+            
+            // Check if item has flex-grow (should fill remaining space)
+            int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
+            
             layx_scalar extend = used;
-            if ((flags & LAYX_FILL_HORIZONTAL) == LAYX_FILL_HORIZONTAL) {
+            if (has_flex_grow) {
                 ++count;
                 extend += child_rect[dim] + child_margins[wdim];
             } else {
@@ -978,8 +1013,15 @@ void layx_arrange_stacked(
                 layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
                 switch (justify) {
                 case LAYX_JUSTIFY_SPACE_BETWEEN:
-                    if (!wrap || ((end_child != LAYX_INVALID_ID) && !hardbreak))
-                        spacer = (float)extra_space / (float)(total - 1);
+                    if (!wrap || ((end_child != LAYX_INVALID_ID) && !hardbreak)) {
+                        // For non-wrapped or single-line wrapped: distribute space between items
+                        if (total > 1) {
+                            spacer = (float)extra_space / (float)(total - 1);
+                        } else {
+                            // Single item: place at start (FLEX_START)
+                            spacer = 0.0f;
+                        }
+                    }
                     break;
                 case LAYX_JUSTIFY_FLEX_START:
                     break;
@@ -1013,16 +1055,30 @@ void layx_arrange_stacked(
         
         child = start_child;
         while (child != end_child) {
+            // Apply spacer for first item too (for SPACE_AROUND/EVENLY with single item)
+            if (spacer != 0 && child == start_child) {
+                // For SPACE_AROUND: apply half spacer (space distributed to both sides)
+                // For SPACE_EVENLY: apply full spacer (first gap of total+1 gaps)
+                layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
+                if (justify == LAYX_JUSTIFY_SPACE_AROUND) {
+                    x += spacer / 2.0f;
+                } else if (justify == LAYX_JUSTIFY_SPACE_EVENLY) {
+                    x += spacer;
+                }
+                // For SPACE_BETWEEN: don't apply initial spacer, let extra_margin handle it
+            }
             layx_scalar ix0, ix1;
             layx_item_t *pchild = layx_get_item(ctx, child);
             const uint32_t child_flags = pchild->flags;
-            const uint32_t flags = (child_flags & LAYX_ALIGN_SELF_MASK) >> dim;
             const uint32_t fflags = (child_flags & LAYX_SIZE_FIXED_MASK) >> dim;
             const layx_vec4 child_margins = pchild->margins;
             layx_vec4 child_rect = ctx->rects[child];
 
+            // Check if item has flex-grow
+            int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
+            
             x += (float)child_rect[dim] + extra_margin;
-            if ((flags & LAYX_FILL_HORIZONTAL) == LAYX_FILL_HORIZONTAL)
+            if (has_flex_grow)
                 x1 = x + filler;
             else if ((fflags & LAYX_SIZE_FIXED_WIDTH) == LAYX_SIZE_FIXED_WIDTH)
                 x1 = x + (float)child_rect[2 + dim];
@@ -1052,7 +1108,6 @@ void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
 {
     const int wdim = dim + 2;
     layx_item_t *pitem = layx_get_item(ctx, item);
-    const layx_vec4 rect = ctx->rects[item];
     const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
     const layx_scalar space = layx_get_internal_space(ctx, item, dim);
 
@@ -1178,10 +1233,8 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
             if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
                 layx_arrange_stacked(ctx, item, dim, false);
             } else {
-                const layx_vec4 rect = ctx->rects[item];
-                layx_arrange_overlay_squeezed_range(
-                    ctx, dim, pitem->first_child, LAYX_INVALID_ID,
-                    layx_get_content_offset(ctx, item, dim), layx_get_internal_space(ctx, item, dim));
+                // Use layx_arrange_overlay for cross-axis alignment (align-items)
+                layx_arrange_overlay(ctx, item, dim);
             }
         }
     } else {
@@ -1290,4 +1343,3 @@ const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item)
     if (len == 0) return "default";
     return buf;
 }
-
