@@ -4,23 +4,27 @@ project(mylayout C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# Create LayX library
+add_library(layx layx.c)
+target_include_directories(layx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
 # LayX library tests
 add_executable(test_layx
     test_layx.c
-    layx.c
 )
+target_link_libraries(test_layx layx)
 
 # Layout patterns test
 add_executable(test_layout_patterns
     test_layout_patterns.c
-    layx.c
 )
+target_link_libraries(test_layout_patterns layx)
 
 # Default values test
 add_executable(test_defaults
     test_defaults.c
-    layx.c
 )
+target_link_libraries(test_defaults layx)
 
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
