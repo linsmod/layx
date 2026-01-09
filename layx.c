@@ -1152,8 +1152,20 @@ void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
             // FLEX_END: align to bottom/right
             child_rect[dim] += space - child_rect[2 + dim] - child_margins[dim] - child_margins[wdim];
         } else if (align == LAYX_ALIGN_ITEMS_STRETCH || align == LAYX_ALIGN_SELF_STRETCH) {
-            // STRETCH: fill available space
-            child_rect[2 + dim] = layx_scalar_max(0, space - child_rect[dim] - child_margins[wdim]);
+            // STRETCH: fill available space only if child doesn't have fixed size in cross-axis
+            // For dim=0 (x-axis), check if child has fixed width
+            // For dim=1 (y-axis), check if child has fixed height
+            bool has_fixed_size = false;
+            if (dim == 0) {
+                // X-axis: check for fixed width (cross-axis for column flex)
+                has_fixed_size = (pchild->flags & LAYX_SIZE_FIXED_WIDTH) != 0;
+            } else {
+                // Y-axis: check for fixed height (cross-axis for row flex)
+                has_fixed_size = (pchild->flags & LAYX_SIZE_FIXED_HEIGHT) != 0;
+            }
+            if (!has_fixed_size) {
+                child_rect[2 + dim] = layx_scalar_max(0, space - child_rect[dim] - child_margins[wdim]);
+            }
         }
         // FLEX_START and BASELINE use default position (already at 0 relative to offset)
 
@@ -1273,57 +1285,72 @@ const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item)
     
     layx_display display = layx_get_display_from_flags(flags);
     switch (display) {
-        case LAYX_DISPLAY_BLOCK: len += snprintf(buf + len, sizeof(buf) - len, "BLOCK"); break;
-        case LAYX_DISPLAY_FLEX: len += snprintf(buf + len, sizeof(buf) - len, "FLEX"); break;
+        case LAYX_DISPLAY_BLOCK: len += snprintf(buf + len, sizeof(buf) - len, "display:BLOCK"); break;
+        case LAYX_DISPLAY_FLEX: len += snprintf(buf + len, sizeof(buf) - len, "display:FLEX"); break;
+        default: len += snprintf(buf + len, sizeof(buf) - len, "display:INVALID(%d)", display); break;
     }
     
     if (display == LAYX_DISPLAY_FLEX) {
         layx_flex_direction dir = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
+        const char* dir_str = "UNKNOWN";
         switch (dir) {
-            case LAYX_FLEX_DIRECTION_ROW: len += snprintf(buf + len, sizeof(buf) - len, "|ROW"); break;
-            case LAYX_FLEX_DIRECTION_COLUMN: len += snprintf(buf + len, sizeof(buf) - len, "|COLUMN"); break;
-            case LAYX_FLEX_DIRECTION_ROW_REVERSE: len += snprintf(buf + len, sizeof(buf) - len, "|ROW_REVERSE"); break;
-            case LAYX_FLEX_DIRECTION_COLUMN_REVERSE: len += snprintf(buf + len, sizeof(buf) - len, "|COLUMN_REVERSE"); break;
+            case LAYX_FLEX_DIRECTION_ROW: dir_str = "ROW"; break;
+            case LAYX_FLEX_DIRECTION_COLUMN: dir_str = "COLUMN"; break;
+            case LAYX_FLEX_DIRECTION_ROW_REVERSE: dir_str = "ROW_REVERSE"; break;
+            case LAYX_FLEX_DIRECTION_COLUMN_REVERSE: dir_str = "COLUMN_REVERSE"; break;
+            default: dir_str = "INVALID"; break;
         }
+        len += snprintf(buf + len, sizeof(buf) - len, "|dir:%s", dir_str);
         
         layx_flex_wrap wrap = (layx_flex_wrap)(flags & LAYX_FLEX_WRAP_MASK);
+        const char* wrap_str = "UNKNOWN";
         switch (wrap) {
-            case LAYX_FLEX_WRAP_WRAP: len += snprintf(buf + len, sizeof(buf) - len, "|WRAP"); break;
-            case LAYX_FLEX_WRAP_WRAP_REVERSE: len += snprintf(buf + len, sizeof(buf) - len, "|WRAP_REVERSE"); break;
-            case LAYX_FLEX_WRAP_NOWRAP: break;
+            case LAYX_FLEX_WRAP_NOWRAP: wrap_str = "NOWRAP"; break;
+            case LAYX_FLEX_WRAP_WRAP: wrap_str = "WRAP"; break;
+            case LAYX_FLEX_WRAP_WRAP_REVERSE: wrap_str = "WRAP_REVERSE"; break;
+            default: wrap_str = "INVALID"; break;
         }
+        len += snprintf(buf + len, sizeof(buf) - len, "|wrap:%s", wrap_str);
         
         layx_justify_content justify = (layx_justify_content)(flags & LAYX_JUSTIFY_CONTENT_MASK);
+        const char* justify_str = "UNKNOWN";
         switch (justify) {
-            case LAYX_JUSTIFY_CENTER: len += snprintf(buf + len, sizeof(buf) - len, "|JUSTIFY_CENTER"); break;
-            case LAYX_JUSTIFY_FLEX_END: len += snprintf(buf + len, sizeof(buf) - len, "|JUSTIFY_FLEX_END"); break;
-            case LAYX_JUSTIFY_SPACE_BETWEEN: len += snprintf(buf + len, sizeof(buf) - len, "|JUSTIFY_SPACE_BETWEEN"); break;
-            case LAYX_JUSTIFY_SPACE_AROUND: len += snprintf(buf + len, sizeof(buf) - len, "|JUSTIFY_SPACE_AROUND"); break;
-            case LAYX_JUSTIFY_SPACE_EVENLY: len += snprintf(buf + len, sizeof(buf) - len, "|JUSTIFY_SPACE_EVENLY"); break;
-            case LAYX_JUSTIFY_FLEX_START: break;
+            case LAYX_JUSTIFY_FLEX_START: justify_str = "FLEX_START"; break;
+            case LAYX_JUSTIFY_CENTER: justify_str = "CENTER"; break;
+            case LAYX_JUSTIFY_FLEX_END: justify_str = "FLEX_END"; break;
+            case LAYX_JUSTIFY_SPACE_BETWEEN: justify_str = "SPACE_BETWEEN"; break;
+            case LAYX_JUSTIFY_SPACE_AROUND: justify_str = "SPACE_AROUND"; break;
+            case LAYX_JUSTIFY_SPACE_EVENLY: justify_str = "SPACE_EVENLY"; break;
+            default: justify_str = "INVALID"; break;
         }
+        len += snprintf(buf + len, sizeof(buf) - len, "|justify:%s", justify_str);
         
         layx_align_items align_items = (layx_align_items)(flags & LAYX_ALIGN_ITEMS_MASK);
+        const char* align_items_str = "UNKNOWN";
         switch (align_items) {
-            case LAYX_ALIGN_ITEMS_CENTER: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_ITEMS_CENTER"); break;
-            case LAYX_ALIGN_ITEMS_FLEX_END: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_ITEMS_FLEX_END"); break;
-            case LAYX_ALIGN_ITEMS_BASELINE: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_ITEMS_BASELINE"); break;
-            case LAYX_ALIGN_ITEMS_FLEX_START: break;
-            case LAYX_ALIGN_ITEMS_STRETCH: break;
+            case LAYX_ALIGN_ITEMS_STRETCH: align_items_str = "STRETCH"; break;
+            case LAYX_ALIGN_ITEMS_FLEX_START: align_items_str = "FLEX_START"; break;
+            case LAYX_ALIGN_ITEMS_CENTER: align_items_str = "CENTER"; break;
+            case LAYX_ALIGN_ITEMS_FLEX_END: align_items_str = "FLEX_END"; break;
+            case LAYX_ALIGN_ITEMS_BASELINE: align_items_str = "BASELINE"; break;
+            default: align_items_str = "INVALID"; break;
         }
+        len += snprintf(buf + len, sizeof(buf) - len, "|align-items:%s", align_items_str);
         
         layx_align_content align_content = (layx_align_content)(flags & LAYX_ALIGN_CONTENT_MASK);
+        const char* align_content_str = "UNKNOWN";
         switch (align_content) {
-            case LAYX_ALIGN_CONTENT_CENTER: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_CONTENT_CENTER"); break;
-            case LAYX_ALIGN_CONTENT_FLEX_END: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_CONTENT_FLEX_END"); break;
-            case LAYX_ALIGN_CONTENT_SPACE_BETWEEN: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_CONTENT_SPACE_BETWEEN"); break;
-            case LAYX_ALIGN_CONTENT_SPACE_AROUND: len += snprintf(buf + len, sizeof(buf) - len, "|ALIGN_CONTENT_SPACE_AROUND"); break;
-            case LAYX_ALIGN_CONTENT_FLEX_START: break;
-            case LAYX_ALIGN_CONTENT_STRETCH: break;
+            case LAYX_ALIGN_CONTENT_STRETCH: align_content_str = "STRETCH"; break;
+            case LAYX_ALIGN_CONTENT_FLEX_START: align_content_str = "FLEX_START"; break;
+            case LAYX_ALIGN_CONTENT_CENTER: align_content_str = "CENTER"; break;
+            case LAYX_ALIGN_CONTENT_FLEX_END: align_content_str = "FLEX_END"; break;
+            case LAYX_ALIGN_CONTENT_SPACE_BETWEEN: align_content_str = "SPACE_BETWEEN"; break;
+            case LAYX_ALIGN_CONTENT_SPACE_AROUND: align_content_str = "SPACE_AROUND"; break;
+            default: align_content_str = "INVALID"; break;
         }
+        len += snprintf(buf + len, sizeof(buf) - len, "|align-content:%s", align_content_str);
     }
     
-    if (len == 0) return "BLOCK";
     return buf;
 }
 
@@ -1342,14 +1369,6 @@ const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item)
     }
     if (flags & LAYX_SIZE_FIXED_HEIGHT) {
         len += snprintf(buf + len, sizeof(buf) - len, "%sHEIGHT_FIXED", first ? "" : "|");
-        first = 0;
-    }
-    if (flags & LAYX_FILL_HORIZONTAL) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%sFILL_H", first ? "" : "|");
-        first = 0;
-    }
-    if (flags & LAYX_FILL_VERTICAL) {
-        len += snprintf(buf + len, sizeof(buf) - len, "%sFILL_V", first ? "" : "|");
         first = 0;
     }
 

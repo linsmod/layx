@@ -199,12 +199,6 @@ enum {
     LAYX_BREAK = 0x100000
 };
 
-// Internal alignment bit flags (for align-self implementation)
-enum {
-    LAYX_FILL_HORIZONTAL = 0x0A0,      // fill to both left and right (0x020 | 0x080)
-    LAYX_FILL_VERTICAL = 0x140          // fill to both top and bottom (0x040 | 0x100)
-};
-
 // Context management
 LAYX_EXPORT void layx_init_context(layx_context *ctx);
 LAYX_EXPORT void layx_reserve_items_capacity(layx_context *ctx, layx_id count);
