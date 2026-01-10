@@ -405,7 +405,6 @@ void layx_get_visible_content_rect(layx_context *ctx, layx_id item,
                                   layx_scalar *visible_right, layx_scalar *visible_bottom);
 int layx_has_vertical_scrollbar(layx_context *ctx, layx_id item);
 int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item);
-layx_scalar layx_get_scrollbar_width(layx_context *ctx);
 
 // 获取滚动信息的函数 - 这些返回向量类型，需要特殊处理
 #ifndef LAYX_EXPORT
