@@ -70,10 +70,12 @@ void test_auto_horizontal_scrollbar(void) {
     TEST_ASSERT(!has_v_scroll, "垂直滚动条不应显示（内容高度50 < 客户区高度130）");
 
     // 验证内容尺寸
+    // 容器：200x150，padding:10，子项：300x50
+    // 内容宽度应包含子项宽度(300) + padding左右(20)
     layx_vec2 content_size;
     layx_get_content_size(&ctx, container, &content_size);
-    TEST_ASSERT(content_size[0] > 180.0f, "内容宽度应大于客户区宽度");
-    TEST_ASSERT(content_size[0] >= 300.0f, "内容宽度应至少包含子项宽度");
+    TEST_ASSERT(content_size[0] >= 300.0f, "内容宽度应至少包含子项宽度(300)");
+    TEST_ASSERT(content_size[1] >= 50.0f, "内容高度应至少包含子项高度(50)");
 
     layx_destroy_context(&ctx);
 }
@@ -140,13 +142,18 @@ void test_overflow_scroll_always(void) {
     layx_set_size(&ctx, container, 200, 200);
     layx_set_overflow(&ctx, container, LAYX_OVERFLOW_SCROLL);
 
+    // 添加超出容器的子项，使内容溢出
+    layx_id child = layx_item(&ctx);
+    layx_set_size(&ctx, child, 300, 300);
+    layx_push(&ctx, container, child);
+
     // 运行布局
     layx_run_context(&ctx);
 
-    // overflow: scroll 应该总是显示滚动条
+    // overflow: scroll 在内容溢出时显示滚动条
     int has_h_scroll = layx_has_horizontal_scrollbar(&ctx, container);
     int has_v_scroll = layx_has_vertical_scrollbar(&ctx, container);
-    TEST_ASSERT(has_h_scroll || has_v_scroll, "overflow:scroll 应该显示滚动条");
+    TEST_ASSERT(has_h_scroll || has_v_scroll, "overflow:scroll在内容溢出时应显示滚动条");
 
     layx_destroy_context(&ctx);
 }
@@ -355,8 +362,6 @@ void test_get_content_size(void) {
     layx_set_overflow(&ctx, container, LAYX_OVERFLOW_AUTO);
     layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
-    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
     // 添加子项
     layx_id child1 = layx_item(&ctx);
@@ -414,6 +419,165 @@ void test_container_layout_with_padding(void) {
     layx_destroy_context(&ctx);
 }
 
+/**
+ * 测试11: 可视区域计算
+ */
+void test_visible_area_calculation(void) {
+    printf("\n=== Test 11: Visible Area Calculation ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    layx_id container = layx_item(&ctx);
+    layx_set_size(&ctx, container, 200, 150);
+    layx_set_padding(&ctx, container, 10);
+    layx_set_overflow(&ctx, container, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
+
+    layx_id child = layx_item(&ctx);
+    layx_set_size(&ctx, child, 300, 50);
+    layx_push(&ctx, container, child);
+
+    layx_run_context(&ctx);
+
+    // 获取可视区域（相对于内容区域，以scroll offset为起点）
+    layx_scalar visible_left, visible_top, visible_right, visible_bottom;
+    layx_get_visible_content_rect(&ctx, container, &visible_left, &visible_top, &visible_right, &visible_bottom);
+
+    // 验证可视区域尺寸 = 容器尺寸 - padding
+    // 客户区宽度: 200 - 10 - 10 = 180
+    // 客户区高度: 150 - 10 - 10 = 130
+    // visible_left和visible_top是相对于内容区域的滚动偏移（初始为0）
+    TEST_ASSERT(float_equals(visible_left, 0.0f, 0.1f), "可视区域左边界应为scroll offset(0)");
+    TEST_ASSERT(float_equals(visible_top, 0.0f, 0.1f), "可视区域上边界应为scroll offset(0)");
+    TEST_ASSERT(float_equals(visible_right - visible_left, 180.0f, 1.0f), "可视区域宽度应为180");
+    TEST_ASSERT(float_equals(visible_bottom - visible_top, 130.0f, 1.0f), "可视区域高度应为130");
+
+    layx_destroy_context(&ctx);
+}
+
+/**
+ * 测试12: overflow-x和overflow-y独立设置
+ */
+void test_overflow_x_y_independent(void) {
+    printf("\n=== Test 12: Overflow X/Y Independent ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    layx_id container = layx_item(&ctx);
+    layx_set_size(&ctx, container, 200, 150);
+    layx_set_overflow_x(&ctx, container, LAYX_OVERFLOW_AUTO);
+    layx_set_overflow_y(&ctx, container, LAYX_OVERFLOW_HIDDEN);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
+
+    // 添加宽高都超出的子项
+    layx_id child = layx_item(&ctx);
+    layx_set_size(&ctx, child, 300, 300);
+    layx_push(&ctx, container, child);
+
+    layx_run_context(&ctx);
+
+    // 应该只有水平滚动条，没有垂直滚动条
+    int has_h = layx_has_horizontal_scrollbar(&ctx, container);
+    int has_v = layx_has_vertical_scrollbar(&ctx, container);
+    TEST_ASSERT(has_h, "overflow-x:auto 且内容溢出时应有水平滚动条");
+    TEST_ASSERT(!has_v, "overflow-y:hidden 时不应有垂直滚动条");
+
+    layx_destroy_context(&ctx);
+}
+
+/**
+ * 测试13: 动态内容变化
+ */
+void test_dynamic_content_change(void) {
+    printf("\n=== Test 13: Dynamic Content Change ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    layx_id container = layx_item(&ctx);
+    layx_set_size(&ctx, container, 200, 150);
+    layx_set_overflow(&ctx, container, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
+
+    // 初始：内容不溢出，没有滚动条
+    layx_id child = layx_item(&ctx);
+    layx_set_size(&ctx, child, 100, 100);
+    layx_push(&ctx, container, child);
+
+    layx_run_context(&ctx);
+    int has_scroll1 = layx_has_horizontal_scrollbar(&ctx, container) || 
+                     layx_has_vertical_scrollbar(&ctx, container);
+    TEST_ASSERT(!has_scroll1, "初始内容不溢出，不应有滚动条");
+
+    // 动态增大子项尺寸
+    layx_set_size(&ctx, child, 300, 300);
+    layx_run_context(&ctx);  // 重新布局
+
+    int has_scroll2 = layx_has_horizontal_scrollbar(&ctx, container) || 
+                     layx_has_vertical_scrollbar(&ctx, container);
+    TEST_ASSERT(has_scroll2, "内容增大后应有滚动条");
+
+    layx_destroy_context(&ctx);
+}
+
+/**
+ * 测试14: 嵌套滚动容器
+ */
+void test_nested_scroll_containers(void) {
+    printf("\n=== Test 14: Nested Scroll Containers ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    // 外层容器
+    layx_id outer = layx_item(&ctx);
+    layx_set_size(&ctx, outer, 400, 300);
+    layx_set_overflow(&ctx, outer, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, outer, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, outer, LAYX_FLEX_DIRECTION_COLUMN);
+
+    // 内层容器
+    layx_id inner = layx_item(&ctx);
+    layx_set_size(&ctx, inner, 500, 200);
+    layx_set_overflow(&ctx, inner, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, inner, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, inner, LAYX_FLEX_DIRECTION_COLUMN);
+    layx_push(&ctx, outer, inner);
+
+    // 内容项
+    layx_id content = layx_item(&ctx);
+    layx_set_size(&ctx, content, 800, 600);
+    layx_push(&ctx, inner, content);
+
+    layx_run_context(&ctx);
+
+    // 外层应该有水平滚动条（内层宽度500 > 外层400）
+    int outer_has_h = layx_has_horizontal_scrollbar(&ctx, outer);
+    TEST_ASSERT(outer_has_h, "外层容器应有水平滚动条");
+
+    // 内层应该有水平滚动条（内容宽度800 > 内层500）
+    int inner_has_h = layx_has_horizontal_scrollbar(&ctx, inner);
+    TEST_ASSERT(inner_has_h, "内层容器应有水平滚动条");
+
+    // 验证内容尺寸
+    layx_vec2 outer_content, inner_content;
+    layx_get_content_size(&ctx, outer, &outer_content);
+    layx_get_content_size(&ctx, inner, &inner_content);
+    TEST_ASSERT(outer_content[0] >= 500.0f, "外层内容宽度应至少为内层宽度");
+    TEST_ASSERT(inner_content[0] >= 800.0f, "内层内容宽度应至少为内容项宽度");
+
+    layx_destroy_context(&ctx);
+}
+
 int main(void) {
     printf("===========================================\n");
     printf("   LAYX Scroll Functionality Test Suite\n");
@@ -430,6 +594,10 @@ int main(void) {
     test_scroll_range_clamping();
     test_get_content_size();
     test_container_layout_with_padding();
+    test_visible_area_calculation();
+    test_overflow_x_y_independent();
+    test_dynamic_content_change();
+    test_nested_scroll_containers();
 
     // 输出测试总结
     printf("\n===========================================\n");

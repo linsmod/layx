@@ -146,19 +146,26 @@ void layx_run_item(layx_context *ctx, layx_id item)
         layx_init_scroll_fields(ctx, item);
     }
     
-    // 原有布局计算
+    // 横向
     layx_calc_size(ctx, item, 0);
     layx_arrange(ctx, item, 0);
     
-    // 第二次尺寸计算和排列（考虑滚动条）
+    // 纵向
     layx_calc_size(ctx, item, 1);
     layx_arrange(ctx, item, 1);
     
-    // 计算内容尺寸（基于已排列的子项）
+    // 计算内容尺寸
     layx_calculate_content_size(ctx, item);
     
     // 检测滚动条需求
     layx_detect_scrollbars(ctx, item);
+    
+    // 递归处理子项的滚动计算
+    layx_id child = pitem->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_run_item(ctx, child);
+        child = layx_next_sibling(ctx, child);
+    }
 }
 
 void layx_clear_item_break(layx_context *ctx, layx_id item)
@@ -1287,6 +1294,12 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
         }
     } else {
         layx_arrange_overlay(ctx, item, dim);
+    }
+    
+    layx_id child = pitem->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_arrange(ctx, child,dim);
+        child = layx_next_sibling(ctx, child);
     }
 }
 
