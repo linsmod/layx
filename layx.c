@@ -1,5 +1,6 @@
 #define LAYX_IMPLEMENTATION
 #include "layx.h"
+#include "scroll_utils.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -132,8 +133,25 @@ void layx_run_context(layx_context *ctx)
 void layx_run_item(layx_context *ctx, layx_id item)
 {
     LAYX_ASSERT(ctx != NULL);
+    
+    // 初始化滚动字段（如果还没有初始化）
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    if (pitem->scroll_offset[0] == 0.0f && pitem->scroll_offset[1] == 0.0f && 
+        pitem->content_size[0] == 0.0f && pitem->content_size[1] == 0.0f) {
+        layx_init_scroll_fields(ctx, item);
+    }
+    
+    // 原有布局计算
     layx_calc_size(ctx, item, 0);
     layx_arrange(ctx, item, 0);
+    
+    // 计算内容尺寸（基于已排列的子项）
+    layx_calculate_content_size(ctx, item);
+    
+    // 检测滚动条需求
+    layx_detect_scrollbars(ctx, item);
+    
+    // 第二次尺寸计算和排列（考虑滚动条）
     layx_calc_size(ctx, item, 1);
     layx_arrange(ctx, item, 1);
 }

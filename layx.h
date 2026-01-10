@@ -80,6 +80,19 @@ typedef struct layx_item_t {
     layx_scalar flex_grow;
     layx_scalar flex_shrink;
     layx_scalar flex_basis;
+    
+    // ============ 新增：滚动相关字段 ============
+    // 滚动状态
+    layx_vec2 scroll_offset;     // [0]=scrollLeft, [1]=scrollTop
+    layx_vec2 scroll_max;        // [0]=maxScrollLeft, [1]=maxScrollTop
+    
+    // 内容实际尺寸（用于计算滚动范围）
+    layx_vec2 content_size;      // [0]=contentWidth, [1]=contentHeight
+    
+    // 滚动条标志位
+    uint8_t overflow_x;          // overflow-x 属性
+    uint8_t overflow_y;          // overflow-y 属性
+    uint8_t has_scrollbars;      // 标志位：是否有滚动条 (bit0=v, bit1=h)
 } layx_item_t;
 
 // Context structure
@@ -150,6 +163,14 @@ typedef enum layx_align_self {
     LAYX_ALIGN_SELF_STRETCH = 0x10000
 } layx_align_self;
 
+// 添加 overflow 属性枚举
+typedef enum layx_overflow {
+    LAYX_OVERFLOW_VISIBLE = 0,
+    LAYX_OVERFLOW_HIDDEN,
+    LAYX_OVERFLOW_SCROLL,
+    LAYX_OVERFLOW_AUTO
+} layx_overflow;
+
 // Style structure
 typedef struct layx_style {
     layx_display display;
@@ -181,6 +202,8 @@ typedef struct layx_style {
 // Bit 18: SIZE_FIXED_WIDTH (0x40000)
 // Bit 19: SIZE_FIXED_HEIGHT (0x80000)
 // Bit 20: BREAK (0x100000)
+// Bit 21: HAS_VSCROLL (0x200000)
+// Bit 22: HAS_HSCROLL (0x400000)
 
 #define LAYX_FLEX_DIRECTION_MASK    0x0003
 #define LAYX_LAYOUT_MODEL_MASK      0x0004
@@ -196,7 +219,12 @@ enum {
     LAYX_SIZE_FIXED_WIDTH = 0x40000,
     LAYX_SIZE_FIXED_HEIGHT = 0x80000,
     LAYX_SIZE_FIXED_MASK = LAYX_SIZE_FIXED_WIDTH | LAYX_SIZE_FIXED_HEIGHT,
-    LAYX_BREAK = 0x100000
+    LAYX_BREAK = 0x100000,
+    
+    // 滚动条标志位 (在flags中使用)
+    LAYX_HAS_VSCROLL = 0x200000,  // 垂直滚动条
+    LAYX_HAS_HSCROLL = 0x400000,  // 水平滚动条
+    LAYX_HAS_SCROLLBARS = LAYX_HAS_VSCROLL | LAYX_HAS_HSCROLL
 };
 
 // Context management
@@ -361,6 +389,38 @@ LAYX_STATIC_INLINE void layx_get_rect_xywh(
     *width = rect[2];
     *height = rect[3];
 }
+
+// Scroll functions (implemented in scroll_utils.c)
+void layx_init_scroll_fields(layx_context *ctx, layx_id item);
+void layx_calculate_content_size(layx_context *ctx, layx_id item);
+void layx_detect_scrollbars(layx_context *ctx, layx_id item);
+void layx_set_overflow_x(layx_context *ctx, layx_id item, layx_overflow overflow);
+void layx_set_overflow_y(layx_context *ctx, layx_id item, layx_overflow overflow);
+void layx_set_overflow(layx_context *ctx, layx_id item, layx_overflow overflow);
+const char* layx_get_overflow_string(layx_overflow overflow);
+void layx_scroll_to(layx_context *ctx, layx_id item, layx_scalar x, layx_scalar y);
+void layx_scroll_by(layx_context *ctx, layx_id item, layx_scalar dx, layx_scalar dy);
+void layx_get_visible_content_rect(layx_context *ctx, layx_id item, 
+                                  layx_scalar *visible_left, layx_scalar *visible_top,
+                                  layx_scalar *visible_right, layx_scalar *visible_bottom);
+int layx_has_vertical_scrollbar(layx_context *ctx, layx_id item);
+int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item);
+layx_scalar layx_get_scrollbar_width(layx_context *ctx);
+
+// 获取滚动信息的函数 - 这些返回向量类型，需要特殊处理
+#ifndef LAYX_EXPORT
+#ifdef __cplusplus
+extern "C" {
+#endif
+#endif
+    layx_vec2 layx_get_scroll_offset(layx_context *ctx, layx_id item);
+    layx_vec2 layx_get_scroll_max(layx_context *ctx, layx_id item);
+    layx_vec2 layx_get_content_size(layx_context *ctx, layx_id item);
+#ifndef LAYX_EXPORT
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 // Debug functions
 LAYX_EXPORT const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item);

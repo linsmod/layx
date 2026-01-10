@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Create LayX library
-add_library(layx layx.c)
+add_library(layx layx.c scroll_utils.c)
 target_include_directories(layx PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # LayX library tests
@@ -25,6 +25,12 @@ add_executable(test_defaults
     test_defaults.c
 )
 target_link_libraries(test_defaults layx)
+
+# Scroll test
+add_executable(test_scroll
+    test_scroll.c
+)
+target_link_libraries(test_scroll layx)
 
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
