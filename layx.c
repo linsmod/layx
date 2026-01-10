@@ -139,33 +139,13 @@ void layx_run_item(layx_context *ctx, layx_id item)
 {
     LAYX_ASSERT(ctx != NULL);
     
-    // 初始化滚动字段（如果还没有初始化）
-    layx_item_t *pitem = layx_get_item(ctx, item);
-    if (pitem->scroll_offset[0] == 0.0f && pitem->scroll_offset[1] == 0.0f && 
-        pitem->content_size[0] == 0.0f && pitem->content_size[1] == 0.0f) {
-        layx_init_scroll_fields(ctx, item);
-    }
-    
-    // 横向
+    // 横向计算尺寸和排列
     layx_calc_size(ctx, item, 0);
     layx_arrange(ctx, item, 0);
     
-    // 纵向
+    // 纵向计算尺寸和排列（会递归计算内容尺寸和滚动条）
     layx_calc_size(ctx, item, 1);
     layx_arrange(ctx, item, 1);
-    
-    // 计算内容尺寸
-    layx_calculate_content_size(ctx, item);
-    
-    // 检测滚动条需求
-    layx_detect_scrollbars(ctx, item);
-    
-    // 递归处理子项的滚动计算
-    layx_id child = pitem->first_child;
-    while (child != LAYX_INVALID_ID) {
-        layx_run_item(ctx, child);
-        child = layx_next_sibling(ctx, child);
-    }
 }
 
 void layx_clear_item_break(layx_context *ctx, layx_id item)
@@ -1296,10 +1276,26 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
         layx_arrange_overlay(ctx, item, dim);
     }
     
+    // 递归处理子项
     layx_id child = pitem->first_child;
     while (child != LAYX_INVALID_ID) {
-        layx_arrange(ctx, child,dim);
+        layx_arrange(ctx, child, dim);
         child = layx_next_sibling(ctx, child);
+    }
+    
+    // 只在最后一次递归时计算（dim == 1，即垂直方向）
+    if (dim == 1) {
+        // 初始化滚动字段（如果还没有初始化）
+        if (pitem->scroll_offset[0] == 0.0f && pitem->scroll_offset[1] == 0.0f && 
+            pitem->content_size[0] == 0.0f && pitem->content_size[1] == 0.0f) {
+            layx_init_scroll_fields(ctx, item);
+        }
+        
+        // 计算内容尺寸
+        layx_calculate_content_size(ctx, item);
+        
+        // 检测滚动条需求
+        layx_detect_scrollbars(ctx, item);
     }
 }
 
