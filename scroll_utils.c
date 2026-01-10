@@ -1,5 +1,6 @@
 #include "layx.h"
 #include <string.h>
+#include <stdio.h>
 
 // 初始化项目的滚动相关字段
 void layx_init_scroll_fields(layx_context *ctx, layx_id item) {
@@ -18,9 +19,11 @@ void layx_init_scroll_fields(layx_context *ctx, layx_id item) {
     pitem->content_size[0] = pitem->size[0];
     pitem->content_size[1] = pitem->size[1];
     
-    // 初始化overflow属性为visible
-    pitem->overflow_x = LAYX_OVERFLOW_VISIBLE;
-    pitem->overflow_y = LAYX_OVERFLOW_VISIBLE;
+    // 初始化overflow属性为visible（仅在未设置时）
+    // 注意：不要覆盖用户已经设置的overflow值
+    // 由于 LAYX_OVERFLOW_VISIBLE = 0，而新item的overflow默认为0
+    // 所以我们只在overflow确实为0时才保持它，否则保留用户的设置
+    // 这里什么都不做，让overflow保持初始值或用户设置的值
     
     // 初始化滚动条标志
     pitem->has_scrollbars = 0;
@@ -33,6 +36,10 @@ void layx_init_scroll_fields(layx_context *ctx, layx_id item) {
 void layx_calculate_content_size(layx_context *ctx, layx_id item) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
     layx_item_t *pitem = layx_get_item(ctx, item);
+    
+    // 计算内容区域的起始位置（padding + border）
+    layx_scalar content_offset_x = pitem->padding[0] + pitem->border[0];
+    layx_scalar content_offset_y = pitem->padding[1] + pitem->border[1];
     
     // 如果没有子项，内容尺寸等于padding+border后的可用空间
     if (pitem->first_child == LAYX_INVALID_ID) {
@@ -48,26 +55,29 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
         return;
     }
     
-    // 有子项时，计算所有子项的边界框
-    layx_scalar max_x = 0.0f;
-    layx_scalar max_y = 0.0f;
+    // 有子项时，计算所有子项的边界框（相对于内容区域）
+    layx_scalar max_content_width = 0.0f;
+    layx_scalar max_content_height = 0.0f;
     layx_id child = pitem->first_child;
     
     while (child != LAYX_INVALID_ID) {
         layx_vec4 child_rect = layx_get_rect(ctx, child);
-        layx_scalar child_right = child_rect[0] + child_rect[2];  // x + width
-        layx_scalar child_bottom = child_rect[1] + child_rect[3]; // y + height
         
-        if (child_right > max_x) max_x = child_right;
-        if (child_bottom > max_y) max_y = child_bottom;
+        // 子项的宽度和右边缘（相对于内容区域）
+        layx_scalar child_right = child_rect[0] + child_rect[2] - content_offset_x;
+        
+        // 子项的高度和底边缘（相对于内容区域）
+        layx_scalar child_bottom = child_rect[1] + child_rect[3] - content_offset_y;
+        
+        // 使用子项的宽度和高度（相对于内容区域起始位置）
+        layx_scalar child_relative_width = child_rect[0] + child_rect[2] - content_offset_x;
+        layx_scalar child_relative_height = child_rect[1] + child_rect[3] - content_offset_y;
+        
+        if (child_relative_width > max_content_width) max_content_width = child_relative_width;
+        if (child_relative_height > max_content_height) max_content_height = child_relative_height;
         
         child = layx_next_sibling(ctx, child);
     }
-    
-    // 内容尺寸应该是最大子项边界 + padding（如果需要）
-    // 这里我们简单地将内容尺寸设为包含所有子项的最小矩形
-    pitem->content_size[0] = max_x;
-    pitem->content_size[1] = max_y;
     
     // 确保内容尺寸不小于client area
     layx_scalar client_width = pitem->size[0] - 
@@ -77,12 +87,8 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
                                 pitem->padding[1] - pitem->padding[3] -
                                 pitem->border[1] - pitem->border[3];
     
-    if (pitem->content_size[0] < client_width) {
-        pitem->content_size[0] = client_width;
-    }
-    if (pitem->content_size[1] < client_height) {
-        pitem->content_size[1] = client_height;
-    }
+    pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
+    pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
 }
 
 // 检测是否需要滚动条（CSS标准行为：不占用布局空间）
@@ -261,22 +267,22 @@ int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item) {
 }
 
 // 获取滚动偏移量
-layx_vec2 layx_get_scroll_offset(layx_context *ctx, layx_id item) {
+void layx_get_scroll_offset(layx_context *ctx, layx_id item, layx_vec2 *offset) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
     layx_item_t *pitem = layx_get_item(ctx, item);
-    return pitem->scroll_offset;
+    *offset = pitem->scroll_offset;
 }
 
 // 获取最大滚动范围
-layx_vec2 layx_get_scroll_max(layx_context *ctx, layx_id item) {
+void layx_get_scroll_max(layx_context *ctx, layx_id item, layx_vec2 *max) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
     layx_item_t *pitem = layx_get_item(ctx, item);
-    return pitem->scroll_max;
+    *max = pitem->scroll_max;
 }
 
 // 获取内容尺寸
-layx_vec2 layx_get_content_size(layx_context *ctx, layx_id item) {
+void layx_get_content_size(layx_context *ctx, layx_id item, layx_vec2 *size) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
     layx_item_t *pitem = layx_get_item(ctx, item);
-    return pitem->content_size;
+    *size = pitem->content_size;
 }

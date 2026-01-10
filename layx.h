@@ -391,35 +391,22 @@ LAYX_STATIC_INLINE void layx_get_rect_xywh(
 }
 
 // Scroll functions (implemented in scroll_utils.c)
-void layx_init_scroll_fields(layx_context *ctx, layx_id item);
-void layx_calculate_content_size(layx_context *ctx, layx_id item);
-void layx_detect_scrollbars(layx_context *ctx, layx_id item);
-void layx_set_overflow_x(layx_context *ctx, layx_id item, layx_overflow overflow);
-void layx_set_overflow_y(layx_context *ctx, layx_id item, layx_overflow overflow);
-void layx_set_overflow(layx_context *ctx, layx_id item, layx_overflow overflow);
-const char* layx_get_overflow_string(layx_overflow overflow);
-void layx_scroll_to(layx_context *ctx, layx_id item, layx_scalar x, layx_scalar y);
-void layx_scroll_by(layx_context *ctx, layx_id item, layx_scalar dx, layx_scalar dy);
-void layx_get_visible_content_rect(layx_context *ctx, layx_id item, 
-                                  layx_scalar *visible_left, layx_scalar *visible_top,
-                                  layx_scalar *visible_right, layx_scalar *visible_bottom);
-int layx_has_vertical_scrollbar(layx_context *ctx, layx_id item);
-int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item);
+LAYX_EXPORT void layx_set_overflow_x(layx_context *ctx, layx_id item, layx_overflow overflow);
+LAYX_EXPORT void layx_set_overflow_y(layx_context *ctx, layx_id item, layx_overflow overflow);
+LAYX_EXPORT void layx_set_overflow(layx_context *ctx, layx_id item, layx_overflow overflow);
+LAYX_EXPORT const char* layx_get_overflow_string(layx_overflow overflow);
+LAYX_EXPORT void layx_scroll_to(layx_context *ctx, layx_id item, layx_scalar x, layx_scalar y);
+LAYX_EXPORT void layx_scroll_by(layx_context *ctx, layx_id item, layx_scalar dx, layx_scalar dy);
+LAYX_EXPORT void layx_get_visible_content_rect(layx_context *ctx, layx_id item, 
+                                   layx_scalar *visible_left, layx_scalar *visible_top,
+                                   layx_scalar *visible_right, layx_scalar *visible_bottom);
+LAYX_EXPORT int layx_has_vertical_scrollbar(layx_context *ctx, layx_id item);
+LAYX_EXPORT int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item);
 
-// 获取滚动信息的函数 - 这些返回向量类型，需要特殊处理
-#ifndef LAYX_EXPORT
-#ifdef __cplusplus
-extern "C" {
-#endif
-#endif
-    layx_vec2 layx_get_scroll_offset(layx_context *ctx, layx_id item);
-    layx_vec2 layx_get_scroll_max(layx_context *ctx, layx_id item);
-    layx_vec2 layx_get_content_size(layx_context *ctx, layx_id item);
-#ifndef LAYX_EXPORT
-#ifdef __cplusplus
-}
-#endif
-#endif
+
+LAYX_EXPORT void layx_get_scroll_offset(layx_context *ctx, layx_id item, layx_vec2 *offset);
+LAYX_EXPORT void layx_get_scroll_max(layx_context *ctx, layx_id item, layx_vec2 *max);
+LAYX_EXPORT void layx_get_content_size(layx_context *ctx, layx_id item, layx_vec2 *size);
 
 // Debug functions
 LAYX_EXPORT const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item);

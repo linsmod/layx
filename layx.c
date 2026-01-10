@@ -130,6 +130,11 @@ void layx_run_context(layx_context *ctx)
     }
 }
 
+
+extern void layx_init_scroll_fields(layx_context *ctx, layx_id item);
+extern void layx_calculate_content_size(layx_context *ctx, layx_id item);
+extern void layx_detect_scrollbars(layx_context *ctx, layx_id item);
+
 void layx_run_item(layx_context *ctx, layx_id item)
 {
     LAYX_ASSERT(ctx != NULL);
@@ -145,15 +150,15 @@ void layx_run_item(layx_context *ctx, layx_id item)
     layx_calc_size(ctx, item, 0);
     layx_arrange(ctx, item, 0);
     
+    // 第二次尺寸计算和排列（考虑滚动条）
+    layx_calc_size(ctx, item, 1);
+    layx_arrange(ctx, item, 1);
+    
     // 计算内容尺寸（基于已排列的子项）
     layx_calculate_content_size(ctx, item);
     
     // 检测滚动条需求
     layx_detect_scrollbars(ctx, item);
-    
-    // 第二次尺寸计算和排列（考虑滚动条）
-    layx_calc_size(ctx, item, 1);
-    layx_arrange(ctx, item, 1);
 }
 
 void layx_clear_item_break(layx_context *ctx, layx_id item)
@@ -1282,13 +1287,6 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
         }
     } else {
         layx_arrange_overlay(ctx, item, dim);
-    }
-    
-    layx_id child = pitem->first_child;
-    while (child != LAYX_INVALID_ID) {
-        layx_arrange(ctx, child, dim);
-        layx_item_t *pchild = layx_get_item(ctx, child);
-        child = pchild->next_sibling;
     }
 }
 

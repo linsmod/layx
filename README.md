@@ -242,12 +242,8 @@ int main() {
     layx_set_overflow_y(&ctx, root, LAYX_OVERFLOW_AUTO);
     layx_init_scroll_fields(&ctx, root);
     
-    // 执行布局
+    // 执行布局，计算内容尺寸和生成滚动信息
     layx_run_context(&ctx);
-    
-    // 计算内容尺寸和检测滚动条
-    layx_calculate_content_size(&ctx, root);
-    layx_detect_scrollbars(&ctx, root);
     
     // 获取结果
     layx_vec4 rect = layx_get_rect(&ctx, child);
