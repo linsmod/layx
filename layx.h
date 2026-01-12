@@ -40,6 +40,16 @@ typedef int16_t layx_scalar;
 
 #define LAYX_INVALID_ID UINT32_MAX
 
+// Text measurement callback type
+// 注意：user_data 由调用端设置，通常包含字体和文本信息
+typedef void (*layx_measure_text_fn)(
+    void *user_data,
+    int is_wrap,
+    float wrap_width,
+    float *out_width,
+    float *out_height
+);
+
 // Vector types
 #if defined(__GNUC__) || defined(__clang__)
 #ifdef LAYX_FLOAT
@@ -71,6 +81,7 @@ typedef struct layx_item_t {
     uint32_t flags;
     layx_id first_child;
     layx_id next_sibling;
+    layx_id parent;
     layx_vec4 margins;
     layx_vec4 padding;
     layx_vec4 border;
@@ -81,7 +92,6 @@ typedef struct layx_item_t {
     layx_scalar flex_shrink;
     layx_scalar flex_basis;
     
-    // ============ 新增：滚动相关字段 ============
     // 滚动状态
     layx_vec2 scroll_offset;     // [0]=scrollLeft, [1]=scrollTop
     layx_vec2 scroll_max;        // [0]=maxScrollLeft, [1]=maxScrollTop
@@ -93,6 +103,10 @@ typedef struct layx_item_t {
     uint8_t overflow_x;          // overflow-x 属性
     uint8_t overflow_y;          // overflow-y 属性
     uint8_t has_scrollbars;      // 标志位：是否有滚动条 (bit0=v, bit1=h)
+    
+    // ============ 新增：文本测量相关字段 ============
+    layx_measure_text_fn measure_text_fn;  // NULL 表示不是文本节点
+    void *measure_text_user_data;          // 用户数据（通常指向 ui_component）
 } layx_item_t;
 
 // Context structure
@@ -118,6 +132,7 @@ typedef enum layx_flex_direction {
 } layx_flex_direction;
 
 // Flex wrap (bits 3-4)
+// whether items wrap to the next row (only applies if combined width of items is greater than container's)
 typedef enum layx_flex_wrap {
     LAYX_FLEX_WRAP_NOWRAP = 0 << 3,  // 0x0000
     LAYX_FLEX_WRAP_WRAP = 1 << 3,    // 0x0008
@@ -125,6 +140,7 @@ typedef enum layx_flex_wrap {
 } layx_flex_wrap;
 
 // Justify content (bits 5-7)
+// alignment along the x axis
 typedef enum layx_justify_content {
     LAYX_JUSTIFY_FLEX_START = 0x000,
     LAYX_JUSTIFY_CENTER = 0x0020,
@@ -135,6 +151,7 @@ typedef enum layx_justify_content {
 } layx_justify_content;
 
 // Align items (bits 8-10)
+// alignment along the y axis
 typedef enum layx_align_items {
     LAYX_ALIGN_ITEMS_STRETCH = 0x0000,
     LAYX_ALIGN_ITEMS_FLEX_START = 0x0100,
@@ -144,6 +161,7 @@ typedef enum layx_align_items {
 } layx_align_items;
 
 // Align content (bits 11-13)
+// only applies if there is more than one row of items
 typedef enum layx_align_content {
     LAYX_ALIGN_CONTENT_STRETCH = 0x0000,
     LAYX_ALIGN_CONTENT_FLEX_START = 0x0800,
@@ -412,6 +430,14 @@ LAYX_EXPORT void layx_get_content_size(layx_context *ctx, layx_id item, layx_vec
 // Debug functions
 LAYX_EXPORT const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item);
 LAYX_EXPORT const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item);
+
+// Text measurement functions
+LAYX_EXPORT void layx_set_item_measure_callback(
+    layx_context *ctx,
+    layx_id item_id,
+    layx_measure_text_fn fn,
+    void *user_data
+);
 
 #undef LAYX_EXPORT
 #undef LAYX_STATIC_INLINE

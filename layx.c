@@ -179,6 +179,7 @@ layx_id layx_item(layx_context *ctx)
     }
     layx_item_t *item = layx_get_item(ctx, idx);
     LAYX_MEMSET(item, 0, sizeof(layx_item_t));
+    item->parent = LAYX_INVALID_ID;
     item->first_child = LAYX_INVALID_ID;
     item->next_sibling = LAYX_INVALID_ID;
     item->min_size[0] = 0; item->min_size[1] = 0;
@@ -222,6 +223,7 @@ void layx_append(layx_context *ctx, layx_id earlier, layx_id later)
     LAYX_ASSERT(earlier != later);
     layx_item_t *LAYX_RESTRICT pearlier = layx_get_item(ctx, earlier);
     layx_item_t *LAYX_RESTRICT plater = layx_get_item(ctx, later);
+    plater->parent = pearlier->parent;  // 设置parent，与earlier的parent相同
     layx_append_by_ptr(pearlier, later, plater);
 }
 
@@ -238,6 +240,7 @@ void layx_insert(layx_context *ctx, layx_id parent, layx_id child)
     layx_item_t *LAYX_RESTRICT pparent = layx_get_item(ctx, parent);
     layx_item_t *LAYX_RESTRICT pchild = layx_get_item(ctx, child);
     LAYX_ASSERT(!(pchild->flags & LAYX_ITEM_INSERTED));
+    pchild->parent = parent;  // 设置parent
     if (pparent->first_child == LAYX_INVALID_ID) {
         pparent->first_child = child;
         pchild->flags |= LAYX_ITEM_INSERTED;
@@ -261,6 +264,7 @@ void layx_push(layx_context *ctx, layx_id parent, layx_id new_child)
     layx_id old_child = pparent->first_child;
     layx_item_t *LAYX_RESTRICT pchild = layx_get_item(ctx, new_child);
     LAYX_ASSERT(!(pchild->flags & LAYX_ITEM_INSERTED));
+    pchild->parent = parent;  // 设置parent
     pparent->first_child = new_child;
     pchild->flags |= LAYX_ITEM_INSERTED;
     pchild->next_sibling = old_child;
@@ -985,9 +989,11 @@ void layx_arrange_stacked(
     while (start_child != LAYX_INVALID_ID) {
         layx_scalar used = 0;
         uint32_t count = 0;
-        uint32_t squeezed_count = 0;
         uint32_t total = 0;
         bool hardbreak = false;
+        
+        // 用于计算flex-shrink权重
+        float total_shrink_factor = 0.0f;
         
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
@@ -1006,9 +1012,12 @@ void layx_arrange_stacked(
                 ++count;
                 extend += child_rect[dim] + child_margins[wdim];
             } else {
-                if ((fflags & LAYX_SIZE_FIXED_WIDTH) != LAYX_SIZE_FIXED_WIDTH)
-                    ++squeezed_count;
                 extend += child_rect[dim] + child_rect[2 + dim] + child_margins[wdim];
+                
+                // 计算flex-shrink权重（如果flex_shrink > 0，则参与压缩）
+                if (pchild->flex_shrink > 0.0f) {
+                    total_shrink_factor += pchild->flex_shrink;
+                }
             }
             
             if (wrap && (total && ((extend > space) || (child_flags & LAYX_BREAK)))) {
@@ -1027,7 +1036,6 @@ void layx_arrange_stacked(
         float filler = 0.0f;
         float spacer = 0.0f;
         float extra_margin = 0.0f;
-        float eater = 0.0f;
 
         if (extra_space > 0) {
             if (count > 0)
@@ -1065,13 +1073,6 @@ void layx_arrange_stacked(
                 }
             }
         }
-        
-#ifdef LAYX_FLOAT
-        else if (!wrap && (squeezed_count > 0))
-#else
-        else if (!wrap && (extra_space < 0))
-#endif
-            eater = (float)extra_space / (float)squeezed_count;
 
         float x = (float)content_offset;
         float x1;
@@ -1103,10 +1104,58 @@ void layx_arrange_stacked(
             x += (float)child_rect[dim] + extra_margin;
             if (has_flex_grow)
                 x1 = x + filler;
-            else if ((fflags & LAYX_SIZE_FIXED_WIDTH) == LAYX_SIZE_FIXED_WIDTH)
-                x1 = x + (float)child_rect[2 + dim];
-            else
-                x1 = x + layx_float_max(0.0f, (float)child_rect[2 + dim] + eater);
+            else {
+                // 计算该元素的压缩量（根据flex-shrink权重）
+                layx_scalar child_size = (float)child_rect[2 + dim];
+                
+                // 计算该元素的内容最小尺寸（不能小于文本或子元素所需空间）
+                layx_scalar min_content_size = 0;
+                
+                // 如果是文本节点，测量文本尺寸作为最小内容尺寸
+                if (pchild->measure_text_fn) {
+                    float text_width = 0, text_height = 0;
+                    // 计算文本的最小尺寸（不需要换行）
+                    pchild->measure_text_fn(pchild->measure_text_user_data, 0, 0.0f, 
+                                         &text_width, &text_height);
+                    // 根据当前维度选择宽度或高度
+                    min_content_size = (dim == 0) ? text_width : text_height;
+                }
+                // 如果有子元素，计算子元素所需的最小空间
+                else if (pchild->first_child != LAYX_INVALID_ID) {
+                    layx_id grandchild = pchild->first_child;
+                    while (grandchild != LAYX_INVALID_ID) {
+                        layx_item_t *pgrand = layx_get_item(ctx, grandchild);
+                        layx_vec4 grand_rect = ctx->rects[grandchild];
+                        // 子元素在该维度的总占用：位置 + 尺寸 + 边距
+                        layx_scalar grand_space = grand_rect[dim] + grand_rect[2 + dim] + 
+                                                   pgrand->margins[dim] + pgrand->margins[wdim];
+                        // 取最大值作为最小内容尺寸
+                        if (grand_space > min_content_size) {
+                            min_content_size = grand_space;
+                        }
+                        grandchild = pgrand->next_sibling;
+                    }
+                }
+                
+                // 加上padding和border
+                min_content_size += pchild->padding[dim] + pchild->padding[wdim] +
+                                pchild->border[dim] + pchild->border[wdim];
+                
+                // 如果空间不足且总shrink权重>0，根据flex-shrink进行压缩
+                if (extra_space < 0 && total_shrink_factor > 0.0f && pchild->flex_shrink > 0.0f) {
+                    // 计算该元素的压缩比例：该元素的flex_shrink / 总flex_shrink
+                    float shrink_ratio = pchild->flex_shrink / total_shrink_factor;
+                    // 该元素需要压缩的总量：总不足空间 * 压缩比例
+                    float shrink_amount = (float)extra_space * shrink_ratio;
+                    // 计算压缩后的尺寸
+                    float shrunk_size = (float)child_size + shrink_amount;
+                    // 确保不小于内容最小尺寸
+                    x1 = x + layx_float_max((float)min_content_size, layx_float_max(0.0f, shrunk_size));
+                } else {
+                    // 不需要压缩，使用原始尺寸，但要确保不小于内容最小尺寸
+                    x1 = x + layx_float_max((float)min_content_size, (float)child_rect[2 + dim]);
+                }
+            }
 
             ix0 = (layx_scalar)x;
             if (wrap)
@@ -1399,4 +1448,16 @@ const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item)
 
     if (len == 0) return "default";
     return buf;
+}
+
+// Text measurement API functions
+void layx_set_item_measure_callback(
+    layx_context *ctx,
+    layx_id item_id,
+    layx_measure_text_fn fn,
+    void *user_data
+) {
+    layx_item_t *pitem = layx_get_item(ctx, item_id);
+    pitem->measure_text_fn = fn;
+    pitem->measure_text_user_data = user_data;
 }
