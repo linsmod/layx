@@ -273,6 +273,12 @@ void layx_get_scroll_offset(layx_context *ctx, layx_id item, layx_vec2 *offset) 
     *offset = pitem->scroll_offset;
 }
 
+void layx_get_scroll_offset_xy(layx_context *ctx, layx_id item, layx_scalar *x, layx_scalar *y) {
+    LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    *x = pitem->scroll_offset[0];
+    *y = pitem->scroll_offset[1];
+}
 // 获取最大滚动范围
 void layx_get_scroll_max(layx_context *ctx, layx_id item, layx_vec2 *max) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);

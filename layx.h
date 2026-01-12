@@ -405,6 +405,7 @@ LAYX_EXPORT int layx_has_horizontal_scrollbar(layx_context *ctx, layx_id item);
 
 
 LAYX_EXPORT void layx_get_scroll_offset(layx_context *ctx, layx_id item, layx_vec2 *offset);
+void layx_get_scroll_offset_xy(layx_context *ctx, layx_id item, layx_scalar *x, layx_scalar *y);
 LAYX_EXPORT void layx_get_scroll_max(layx_context *ctx, layx_id item, layx_vec2 *max);
 LAYX_EXPORT void layx_get_content_size(layx_context *ctx, layx_id item, layx_vec2 *size);
 
