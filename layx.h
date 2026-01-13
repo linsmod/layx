@@ -116,6 +116,12 @@ typedef struct layx_item_t {
 // Context structure
 typedef struct layx_context {
     layx_item_t *items;
+    // rects是执行布局计算后缓存的计算结果。
+    // 表示的元素margin-box相对于父元素content-box的偏移量
+    // ✅ 包含 border
+    // ✅ 包含 padding
+    // ✅ 包含 content
+    // ✅ 包含了该元素自身的margin
     layx_vec4 *rects;
     layx_id capacity;
     layx_id count;
