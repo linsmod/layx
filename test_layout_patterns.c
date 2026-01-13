@@ -784,6 +784,7 @@ static void test_min_max_size_layout(void) {
     // item2 宽度应 <= 50
     assert_true(rect2[2] <= 50, "max_width 生效：item2 宽度被限制在 50");
 
+    layx_dump_tree(&ctx, container,0);
     layx_destroy_context(&ctx);
     printf("  ✓ Min/Max Size Layout 测试完成\n");
 }

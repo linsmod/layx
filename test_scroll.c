@@ -99,20 +99,27 @@ void test_auto_vertical_scrollbar(void) {
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
     // 创建子项使内容超出容器高度
+    // 注意：在column方向的flex布局中，flex-shrink默认为1
+    // 为了防止子项被压缩到没有溢出，我们设置min-height
+    // 这样符合CSS规范：flex-shrink压缩受min-height限制
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
+    layx_set_min_size(&ctx, child1, 100, 50);  // 防止被压缩
     layx_push(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
+    layx_set_min_size(&ctx, child2, 100, 50);  // 防止被压缩
     layx_push(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
+    layx_set_min_size(&ctx, child3, 100, 50);  // 防止被压缩
     layx_push(&ctx, container, child3);
 
     layx_id child4 = layx_item(&ctx);
     layx_set_size(&ctx, child4, 100, 50);
+    layx_set_min_size(&ctx, child4, 100, 50);  // 防止被压缩
     layx_push(&ctx, container, child4);
 
     // 运行布局
@@ -241,8 +248,11 @@ void test_scroll_to(void) {
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
     // 添加大子项
+    // 在column方向的flex布局中，flex-shrink默认为1
+    // 设置min-height防止子项被压缩到没有溢出
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
+    layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
     layx_push(&ctx, container, child);
 
     layx_run_context(&ctx);
@@ -276,8 +286,10 @@ void test_scroll_by(void) {
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
     // 添加大子项
+    // 在column方向的flex布局中，设置min-height防止过度压缩
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
+    layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
     layx_push(&ctx, container, child);
 
     layx_run_context(&ctx);
@@ -314,8 +326,10 @@ void test_scroll_range_clamping(void) {
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
     // 添加大子项
+    // 在column方向的flex布局中，设置min-height防止过度压缩
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
+    layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
     layx_push(&ctx, container, child);
 
     layx_run_context(&ctx);
@@ -325,6 +339,8 @@ void test_scroll_range_clamping(void) {
     layx_get_scroll_max(&ctx, container, &scroll_max);
     TEST_ASSERT(scroll_max[0] > 0.0f, "最大滚动X应大于0");
     TEST_ASSERT(scroll_max[1] > 0.0f, "最大滚动Y应大于0");
+
+    layx_dump_tree(&ctx,container,0);
 
     // 尝试滚动超出范围
     layx_scroll_to(&ctx, container, 9999.0f, 9999.0f);

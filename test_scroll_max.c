@@ -218,11 +218,12 @@ void test_scroll_max_with_padding_and_border(void) {
 
     // 客户区宽度 = 200 - 10 - 10 - 5 - 5 = 170
     // scroll_max[0] = 300 - 170 = 130
+    printf("  container_size: (%.2f, %.2f)\n", 200.0, 150.0);
     printf("  content_size: (%.2f, %.2f)\n", content_size[0], content_size[1]);
     printf("  scroll_max: (%.2f, %.2f)\n", scroll_max[0], scroll_max[1]);
 
     TEST_ASSERT(scroll_max[0] >= 120.0f && scroll_max[0] <= 140.0f, "scroll_max[0]应该约为130");
-
+    layx_dump_tree(&ctx,container,0);
     layx_destroy_context(&ctx);
 }
 
@@ -327,7 +328,7 @@ void test_scroll_max_overflow_visible(void) {
 }
 
 /**
- * 测试9: 多个子项时的scroll_max
+ * 测试9: 多个子项时的scroll_max（不压缩）
  */
 void test_scroll_max_multiple_children(void) {
     printf("\n=== Test 9: scroll_max with Multiple Children ===\n");
@@ -342,21 +343,25 @@ void test_scroll_max_multiple_children(void) {
     layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
 
-    // 添加多个子项
+    // 添加多个子项，设置flex-shrink=0防止压缩
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
+    layx_set_flex_shrink(&ctx, child1, 0);  // 防止压缩
     layx_push(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
+    layx_set_flex_shrink(&ctx, child2, 0);  // 防止压缩
     layx_push(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 100);
+    layx_set_flex_shrink(&ctx, child3, 0);  // 防止压缩
     layx_push(&ctx, container, child3);
 
     layx_id child4 = layx_item(&ctx);
     layx_set_size(&ctx, child4, 100, 50);
+    layx_set_flex_shrink(&ctx, child4, 0);  // 防止压缩
     layx_push(&ctx, container, child4);
 
     layx_run_context(&ctx);
@@ -372,6 +377,118 @@ void test_scroll_max_multiple_children(void) {
 
     TEST_ASSERT(scroll_max[0] == 0.0f, "水平方向scroll_max[0]应为0");
     TEST_ASSERT(scroll_max[1] >= 90.0f && scroll_max[1] <= 110.0f, "垂直方向scroll_max[1]应该约为100");
+
+    layx_destroy_context(&ctx);
+}
+
+/**
+ * 测试9b: 多个子项时的scroll_max（默认压缩）
+ * 
+ * 测试意图：
+ * 验证flex-shrink算法正确处理多个子项的压缩，并尊重min-height约束。
+ * 设置不同的min-height值，确保压缩不会低于最小尺寸限制。
+ * 
+ * 场景设计：
+ * - 容器：200x150px，column flex，overflow:auto
+ * - 总初始高度：50+50+100+50 = 250px，超出容器100px
+ * - 所有子项flex-shrink=1，但有不同的min-height约束
+ * - child3设置了min-height:80px，测试压缩保护机制
+ * 
+ * 预期行为（基于flex-shrink算法）:
+ * 1. 总需求：250px，容器：150px，需要压缩：100px
+ * 2. 加权计算：压缩比例基于flex-shrink * flex-basis
+ * 3. child3受min-height:80px保护，最多只能从100px压缩到80px
+ * 4. 其他子项可能压缩到接近min-height:40px
+ * 
+ * 预期结果：
+ * - 如果child3的min-height约束生效，总内容高度可能仍>150px
+ * - scroll_max[1] > 0（因为存在无法压缩的约束）
+ * - content_size[1]应该反映压缩后的实际高度
+ * 
+ * 测试意义：
+ * 1. 验证压缩算法正确处理多个子项的权重分配
+ * 2. 确认min-height约束被正确执行
+ * 3. 检查压缩失败时是否正确计算scroll_max
+ */
+void test_scroll_max_multiple_children_with_shrink(void) {
+    printf("\n=== Test 9b: scroll_max with Multiple Children (Default Shrink) ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    layx_id container = layx_item(&ctx);
+    layx_set_size(&ctx, container, 200, 150);
+    layx_set_overflow(&ctx, container, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
+
+    // 添加多个子项，使用默认的flex-shrink=1（会被压缩）
+    // 设置min-height来防止被压缩过小，同时验证压缩算法
+    layx_id child1 = layx_item(&ctx);
+    layx_set_size(&ctx, child1, 100, 50);
+    layx_set_min_size(&ctx, child1, 100, 40);  // 最小高度40px
+    layx_push(&ctx, container, child1);
+
+    layx_id child2 = layx_item(&ctx);
+    layx_set_size(&ctx, child2, 100, 50);
+    layx_set_min_size(&ctx, child2, 100, 40);  // 最小高度40px
+    layx_push(&ctx, container, child2);
+
+    layx_id child3 = layx_item(&ctx);
+    layx_set_size(&ctx, child3, 100, 100);
+    layx_set_min_size(&ctx, child3, 100, 80);  // 最小高度80px（受保护）
+    layx_push(&ctx, container, child3);
+
+    layx_id child4 = layx_item(&ctx);
+    layx_set_size(&ctx, child4, 100, 50);
+    layx_set_min_size(&ctx, child4, 100, 40);  // 最小高度40px
+    layx_push(&ctx, container, child4);
+
+    layx_run_context(&ctx);
+
+    layx_vec2 scroll_max, content_size;
+    layx_get_scroll_max(&ctx, container, &scroll_max);
+    layx_get_content_size(&ctx, container, &content_size);
+
+    // 初始总高度：50+50+100+50 = 250px
+    // 容器高度：150px
+    // 需要压缩：100px
+    // 
+    // 加权计算（简化）：
+    // - child1(50px): 权重50
+    // - child2(50px): 权重50
+    // - child3(100px): 权重100
+    // - child4(50px): 权重50
+    // - 总权重：250
+    // - 每单位权重压缩：100/250 = 0.4
+    // 
+    // 理论压缩后（不考虑min-height约束）：
+    // - child1: 50 - 50*0.4 = 30px
+    // - child2: 50 - 50*0.4 = 30px
+    // - child3: 100 - 100*0.4 = 60px
+    // - child4: 50 - 50*0.4 = 30px
+    // - 总计：30+30+60+30 = 150px ✓
+    //
+    // 考虑min-height约束：
+    // - child1: max(30, 40) = 40px
+    // - child2: max(30, 40) = 40px
+    // - child3: max(60, 80) = 80px
+    // - child4: max(30, 40) = 40px
+    // - 实际总计：40+40+80+40 = 200px > 150px ✗
+    //
+    // 因此，由于min-height约束的存在，无法压缩到150px
+    // scroll_max[1] = 200 - 150 = 50px
+    printf("  content_size: (%.2f, %.2f)\n", content_size[0], content_size[1]);
+    printf("  scroll_max: (%.2f, %.2f)\n", scroll_max[0], scroll_max[1]);
+    printf("  expected content_size[1]: ~200.0 (considering min-height constraints)\n");
+    printf("  expected scroll_max[1]: ~50.0\n");
+
+    TEST_ASSERT(scroll_max[0] == 0.0f, "水平方向scroll_max[0]应为0");
+    TEST_ASSERT(content_size[1] >= 180.0f && content_size[1] <= 220.0f, 
+                "垂直方向content_size[1]应该约为200（受min-height约束，无法完全压缩）");
+    TEST_ASSERT(scroll_max[1] >= 30.0f && scroll_max[1] <= 70.0f, 
+                "垂直方向scroll_max[1]应该约为50（存在溢出）");
 
     layx_destroy_context(&ctx);
 }
@@ -551,7 +668,7 @@ void test_scroll_max_horizontal_only(void) {
 }
 
 /**
- * 测试15: scroll_max在只有垂直溢出时
+ * 测试15: scroll_max在只有垂直溢出时（不压缩）
  */
 void test_scroll_max_vertical_only(void) {
     printf("\n=== Test 15: scroll_max with Vertical Overflow Only ===\n");
@@ -568,6 +685,7 @@ void test_scroll_max_vertical_only(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 200);  // 宽度不超出，高度超出
+    layx_set_flex_shrink(&ctx, child, 0);  // 防止压缩
     layx_push(&ctx, container, child);
 
     layx_run_context(&ctx);
@@ -577,6 +695,84 @@ void test_scroll_max_vertical_only(void) {
 
     TEST_ASSERT(float_equals(scroll_max[0], 0.0f, 0.01f), "水平不溢出时scroll_max[0]应为0");
     TEST_ASSERT(scroll_max[1] > 0.0f, "垂直溢出时scroll_max[1]应大于0");
+
+    layx_destroy_context(&ctx);
+}
+/**
+ * 测试15b: scroll_max在只有垂直溢出时（默认压缩，带min-height约束）
+ * 
+ * 测试意图：
+ * 验证flex-shrink算法在min-height约束下的行为，以及最终的scroll_max计算。
+ * 设置min-height值，使得子项无法被完全压缩到容器高度内，从而产生溢出。
+ * 
+ * 场景设计：
+ * - 容器：200x150px，column flex，overflow:auto
+ * - 子项：100x200px（高度超出容器50px）
+ * - flex-shrink:1（允许压缩）
+ * - min-height:180px（压缩下限）
+ * 
+ * 预期行为：
+ * 1. 初始高度：200px，容器：150px，需要压缩：50px
+ * 2. min-height约束：180px
+ * 3. 实际压缩：200px → 180px（无法继续压缩）
+ * 4. 压缩后仍溢出：180px > 150px，溢出：30px
+ * 5. scroll_max[1] = 180 - 150 = 30px
+ * 
+ * 测试意义：
+ * 1. 验证flex-shrink算法尊重min-height约束
+ * 2. 确认当压缩受限时，正确计算溢出量
+ * 3. 验证scroll_max的计算基于压缩后的实际内容尺寸
+ * 4. 对比test 15（flex-shrink:0，完全不可压缩）和本测试（可压缩但有约束）
+ * 
+ * 相关概念（来自SHRINK_POLICY.md）：
+ * - flex-shrink:1（默认）时，子项可以被压缩
+ * - min-height限制压缩的最小值
+ * - 只有压缩到min-height后仍有溢出，才会产生滚动条
+ * - "压缩优先于滚动"：只有当无法继续压缩时，才会创建滚动范围
+ */
+void test_scroll_max_vertical_only_with_shrink(void) {
+    printf("\n=== Test 15b: scroll_max with Vertical Overflow Only (Default Shrink) ===\n");
+
+    layx_context ctx;
+    layx_init_context(&ctx);
+    layx_reserve_items_capacity(&ctx, 10);
+
+    layx_id container = layx_item(&ctx);
+    layx_set_size(&ctx, container, 200, 150);
+    layx_set_overflow(&ctx, container, LAYX_OVERFLOW_AUTO);
+    layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+    layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_COLUMN);
+
+    layx_id child = layx_item(&ctx);
+    layx_set_size(&ctx, child, 100, 200);  // 宽度不超出，高度超出容器50px
+    layx_set_min_size(&ctx, child, 100, 180);  // 设置min-height:180px，限制压缩下限
+    // 注意：未显式设置flex-shrink，使用默认值1（会被压缩）
+    layx_push(&ctx, container, child);
+
+    layx_run_context(&ctx);
+
+    layx_vec2 scroll_max, content_size;
+    layx_get_scroll_max(&ctx, container, &scroll_max);
+    layx_get_content_size(&ctx, container, &content_size);
+
+    // 水平方向：内容宽度100px ≤ 容器宽度200px，无溢出
+    TEST_ASSERT(float_equals(scroll_max[0], 0.0f, 0.01f), "水平不溢出时scroll_max[0]应为0");
+    
+    // 垂直方向：
+    // 初始：200px，容器：150px
+    // flex-shrink:1时尝试压缩
+    // 但min-height:180px阻止了完全压缩
+    // 实际压缩到180px后，仍溢出30px
+    // scroll_max[1] = 180 - 150 = 30px
+    printf("  content_size: (%.2f, %.2f)\n", content_size[0], content_size[1]);
+    printf("  scroll_max: (%.2f, %.2f)\n", scroll_max[0], scroll_max[1]);
+    printf("  expected content_size[1]: 180.0 (compressed but limited by min-height)\n");
+    printf("  expected scroll_max[1]: 30.0 (180 - 150)\n");
+
+    TEST_ASSERT(float_equals(content_size[1], 180.0f, 1.0f), 
+                "子项高度应被压缩到min-height:180px");
+    TEST_ASSERT(scroll_max[1] >= 20.0f && scroll_max[1] <= 40.0f, 
+                "垂直方向scroll_max[1]应该约为30（压缩受限后仍有溢出）");
 
     layx_destroy_context(&ctx);
 }
@@ -596,12 +792,14 @@ int main(void) {
     test_scroll_max_overflow_hidden();
     test_scroll_max_overflow_visible();
     test_scroll_max_multiple_children();
+    test_scroll_max_multiple_children_with_shrink();
     test_scroll_max_nested_containers();
     test_scroll_max_content_size_relation();
     test_scroll_max_empty_container();
     test_scroll_max_exact_match();
     test_scroll_max_horizontal_only();
     test_scroll_max_vertical_only();
+    test_scroll_max_vertical_only_with_shrink();
 
     // 输出测试总结
     printf("\n===========================================\n");

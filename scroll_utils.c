@@ -43,10 +43,10 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
     
     // 如果没有子项，内容尺寸等于padding+border后的可用空间
     if (pitem->first_child == LAYX_INVALID_ID) {
-        layx_scalar client_width = pitem->size[0] - 
+        layx_scalar client_width = pitem->size[0] -
                                    pitem->padding[0] - pitem->padding[2] -
                                    pitem->border[0] - pitem->border[2];
-        layx_scalar client_height = pitem->size[1] - 
+        layx_scalar client_height = pitem->size[1] -
                                     pitem->padding[1] - pitem->padding[3] -
                                     pitem->border[1] - pitem->border[3];
         
@@ -55,40 +55,82 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
         return;
     }
     
+    // 检查是否是flex容器以及flex方向
+    uint32_t flags = pitem->flags;
+    uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
+    layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
+    
+    // 判断是否是column方向的flex布局
+    int is_flex_column = (model != 0) &&
+                         (direction == LAYX_FLEX_DIRECTION_COLUMN ||
+                          direction == LAYX_FLEX_DIRECTION_COLUMN_REVERSE);
+    
+    // 判断是否是row方向的flex布局
+    int is_flex_row = (model != 0) &&
+                       (direction == LAYX_FLEX_DIRECTION_ROW ||
+                        direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
+    
     // 有子项时，计算所有子项的边界框（相对于内容区域）
     layx_scalar max_content_width = 0.0f;
     layx_scalar max_content_height = 0.0f;
+    layx_scalar stacked_content_height = 0.0f;  // 用于累加column布局的高度
+    layx_scalar stacked_content_width = 0.0f;   // 用于累加row布局的宽度
     layx_id child = pitem->first_child;
     
     while (child != LAYX_INVALID_ID) {
         layx_vec4 child_rect = layx_get_rect(ctx, child);
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        
+        // 对于flex布局，需要考虑子项的原始尺寸（size）和布局后尺寸（rect）
+        // 内容尺寸应该反映内容的实际占用空间，所以使用布局后尺寸
+        layx_scalar child_width = child_rect[2];
+        layx_scalar child_height = child_rect[3];
         
         // 子项的宽度和右边缘（相对于内容区域）
-        layx_scalar child_right = child_rect[0] + child_rect[2] - content_offset_x;
+        layx_scalar child_right = child_rect[0] + child_width - content_offset_x;
         
         // 子项的高度和底边缘（相对于内容区域）
-        layx_scalar child_bottom = child_rect[1] + child_rect[3] - content_offset_y;
+        layx_scalar child_bottom = child_rect[1] + child_height - content_offset_y;
         
         // 使用子项的宽度和高度（相对于内容区域起始位置）
-        layx_scalar child_relative_width = child_rect[0] + child_rect[2] - content_offset_x;
-        layx_scalar child_relative_height = child_rect[1] + child_rect[3] - content_offset_y;
+        layx_scalar child_relative_width = child_rect[0] + child_width - content_offset_x;
+        layx_scalar child_relative_height = child_rect[1] + child_height - content_offset_y;
         
         if (child_relative_width > max_content_width) max_content_width = child_relative_width;
         if (child_relative_height > max_content_height) max_content_height = child_relative_height;
+        
+        // 对于column布局，累加子项高度（包括margin）
+        if (is_flex_column) {
+            stacked_content_height += child_height + pchild->margins[1] + pchild->margins[3];
+        }
+        
+        // 对于row布局，累加子项宽度（包括margin）
+        if (is_flex_row) {
+            stacked_content_width += child_width + pchild->margins[0] + pchild->margins[2];
+        }
         
         child = layx_next_sibling(ctx, child);
     }
     
     // 确保内容尺寸不小于client area
-    layx_scalar client_width = pitem->size[0] - 
+    layx_scalar client_width = pitem->size[0] -
                                pitem->padding[0] - pitem->padding[2] -
                                pitem->border[0] - pitem->border[2];
-    layx_scalar client_height = pitem->size[1] - 
-                                pitem->padding[1] - pitem->padding[3] -
-                                pitem->border[1] - pitem->border[3];
+    layx_scalar client_height = pitem->size[1] -
+                                 pitem->padding[1] - pitem->padding[3] -
+                                 pitem->border[1] - pitem->border[3];
     
-    pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
-    pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
+    // 对于column布局，使用累加的高度；对于row布局，使用累加的宽度
+    if (is_flex_column) {
+        pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
+        pitem->content_size[1] = (stacked_content_height > client_height) ? stacked_content_height : client_height;
+    } else if (is_flex_row) {
+        pitem->content_size[0] = (stacked_content_width > client_width) ? stacked_content_width : client_width;
+        pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
+    } else {
+        pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
+        pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
+    }
 }
 
 // 检测是否需要滚动条（CSS标准行为：不占用布局空间）
@@ -97,12 +139,12 @@ void layx_detect_scrollbars(layx_context *ctx, layx_id item) {
     layx_item_t *pitem = layx_get_item(ctx, item);
     
     // 计算client area（不包括滚动条，因为滚动条不占用布局空间）
-    layx_scalar client_width = pitem->size[0] - 
+    layx_scalar client_width = pitem->size[0] -
                                pitem->padding[0] - pitem->padding[2] -
                                pitem->border[0] - pitem->border[2];
-    layx_scalar client_height = pitem->size[1] - 
-                                pitem->padding[1] - pitem->padding[3] -
-                                pitem->border[1] - pitem->border[3];
+    layx_scalar client_height = pitem->size[1] -
+                                 pitem->padding[1] - pitem->padding[3] -
+                                 pitem->border[1] - pitem->border[3];
     
     // 检测水平和垂直滚动条需求
     int needs_v_scroll = 0;
@@ -161,11 +203,20 @@ void layx_detect_scrollbars(layx_context *ctx, layx_id item) {
     }
     
     // 计算滚动范围（最大滚动距离）
-    // 注意：滚动条覆盖在内容上，所以client_width/height不变
-    pitem->scroll_max[0] = (pitem->content_size[0] > client_width) ? 
-                          (pitem->content_size[0] - client_width) : 0.0f;
-    pitem->scroll_max[1] = (pitem->content_size[1] > client_height) ? 
-                          (pitem->content_size[1] - client_height) : 0.0f;
+    // 注意：overflow:visible时不应该有scroll_max
+    if (pitem->overflow_x == LAYX_OVERFLOW_VISIBLE) {
+        pitem->scroll_max[0] = 0.0f;
+    } else {
+        pitem->scroll_max[0] = (pitem->content_size[0] > client_width) ?
+                              (pitem->content_size[0] - client_width) : 0.0f;
+    }
+    
+    if (pitem->overflow_y == LAYX_OVERFLOW_VISIBLE) {
+        pitem->scroll_max[1] = 0.0f;
+    } else {
+        pitem->scroll_max[1] = (pitem->content_size[1] > client_height) ?
+                              (pitem->content_size[1] - client_height) : 0.0f;
+    }
     
     // 限制当前滚动位置不超过最大值
     if (pitem->scroll_offset[0] > pitem->scroll_max[0]) {

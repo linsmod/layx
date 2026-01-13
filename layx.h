@@ -301,6 +301,7 @@ LAYX_EXPORT void layx_set_min_height(layx_context *ctx, layx_id item, layx_scala
 LAYX_EXPORT void layx_set_max_width(layx_context *ctx, layx_id item, layx_scalar max_width);
 LAYX_EXPORT void layx_set_max_height(layx_context *ctx, layx_id item, layx_scalar max_height);
 LAYX_EXPORT void layx_set_size(layx_context *ctx, layx_id item, layx_scalar width, layx_scalar height);
+LAYX_EXPORT void layx_set_min_size(layx_context *ctx, layx_id item, layx_scalar min_width, layx_scalar min_height);
 LAYX_EXPORT layx_vec2 layx_get_size(layx_context *ctx, layx_id item);
 
 // Position properties
@@ -438,6 +439,7 @@ LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
     *height = rect[3] - (padding[1] + padding[3] + margins[1] + margins[3]);
 }
 
+
 // Scroll functions (implemented in scroll_utils.c)
 LAYX_EXPORT void layx_set_overflow_x(layx_context *ctx, layx_id item, layx_overflow overflow);
 LAYX_EXPORT void layx_set_overflow_y(layx_context *ctx, layx_id item, layx_overflow overflow);
@@ -457,18 +459,36 @@ void layx_get_scroll_offset_xy(layx_context *ctx, layx_id item, layx_scalar *x, 
 LAYX_EXPORT void layx_get_scroll_max(layx_context *ctx, layx_id item, layx_vec2 *max);
 LAYX_EXPORT void layx_get_content_size(layx_context *ctx, layx_id item, layx_vec2 *size);
 
+// Web标准 API 命名 (遵循浏览器 DOM 属性规范)
+//
+// clientWidth/clientHeight: 绘制区域（内容+内边距，无滚动条）
+//   相当于: rect.width - 边框 - 滚动条宽度
+//   用途: 获取元素的实际可见区域大小
+LAYX_EXPORT layx_scalar layx_get_client_width(layx_context *ctx, layx_id item);
+LAYX_EXPORT layx_scalar layx_get_client_height(layx_context *ctx, layx_id item);
+LAYX_EXPORT void layx_get_client_size(layx_context *ctx, layx_id item, layx_vec2 *size);
+LAYX_EXPORT void layx_get_client_size_wh(layx_context *ctx, layx_id item, layx_scalar *width, layx_scalar *size);
+
+// scrollWidth/scrollHeight: 内容区域（实际内容大小）
+//   相当于: layx_get_content_size() 返回的值
+//   用途: 获取元素的完整内容尺寸（可能超出可见区域）
+LAYX_EXPORT layx_scalar layx_get_scroll_width(layx_context *ctx, layx_id item);
+LAYX_EXPORT layx_scalar layx_get_scroll_height(layx_context *ctx, layx_id item);
+
+// offsetWidth/offsetHeight: 视口（边框+内边距+内容，无margin）
+//   相当于: ctx.rects[item].width 或 ctx.rects[item].height
+//   用途: 获取元素的总占位大小（不含外边距）
+LAYX_EXPORT layx_scalar layx_get_offset_width(layx_context *ctx, layx_id item);
+LAYX_EXPORT layx_scalar layx_get_offset_height(layx_context *ctx, layx_id item);
+
 // Debug functions
 LAYX_EXPORT const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item);
 LAYX_EXPORT const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item);
 
 // Text measurement functions
-LAYX_EXPORT void layx_set_item_measure_callback(
-    layx_context *ctx,
-    layx_id item_id,
-    layx_measure_text_fn fn,
-    void *user_data
-);
+LAYX_EXPORT void layx_set_mesure_fn(layx_context *ctx, layx_id item_id, layx_measure_text_fn fn, void *user_data);
 
+LAYX_EXPORT void layx_dump_tree(layx_context *layout_ctx, layx_id layout_id, int indent);
 #undef LAYX_EXPORT
 #undef LAYX_STATIC_INLINE
 
