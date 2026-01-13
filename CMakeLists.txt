@@ -32,11 +32,18 @@ add_executable(test_scroll
 )
 target_link_libraries(test_scroll layx)
 
+# scroll_max test
+add_executable(test_scroll_max
+    test_scroll_max.c
+)
+target_link_libraries(test_scroll_max layx)
+
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_layout_patterns PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_defaults PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_scroll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test_scroll_max PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 设置编译选项
 if(MSVC)
@@ -44,11 +51,13 @@ if(MSVC)
     target_compile_options(test_layout_patterns PRIVATE /W4)
     target_compile_options(test_defaults PRIVATE /W4)
     target_compile_options(test_scroll PRIVATE /W4)
+    target_compile_options(test_scroll_max PRIVATE /W4)
 else()
     target_compile_options(test_layx PRIVATE -Wall -Wextra)
     target_compile_options(test_layout_patterns PRIVATE -Wall -Wextra)
     target_compile_options(test_defaults PRIVATE -Wall -Wextra)
     target_compile_options(test_scroll PRIVATE -Wall -Wextra)
+    target_compile_options(test_scroll_max PRIVATE -Wall -Wextra)
 endif()
 
 # Custom target to run all tests
@@ -61,6 +70,8 @@ add_custom_target(tests
     COMMAND ./test_defaults
     COMMAND echo "Running test_scroll..."
     COMMAND ./test_scroll
+    COMMAND echo "Running test_scroll_max..."
+    COMMAND ./test_scroll_max
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all layout tests"
 )
