@@ -861,13 +861,15 @@ layx_scalar layx_get_internal_space(
 }
 
 // Helper function to get offset where children should be positioned
+// 当布局子元素时，用于获取父元素内容区域(content-box)的起始位置，用于作为子元素布局的基准点。
 static LAYX_FORCE_INLINE
 layx_scalar layx_get_content_offset(
         layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    layx_vec4 rect = ctx->rects[item];
-    return rect[dim] + pitem->margins[dim] + pitem->padding[dim] + pitem->border[dim];
+    layx_vec4 rect = ctx->rects[item]; // margin-boxing
+    // dim 0 or 1: left or top
+    return rect[dim] + pitem->padding[dim] + pitem->border[dim];
 }
 
 // Helper to calculate overlayed size

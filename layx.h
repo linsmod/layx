@@ -431,12 +431,12 @@ LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
     LAYX_ASSERT(id != LAYX_INVALID_ID && id < ctx->count);
     layx_vec4 rect = ctx->rects[id];
     layx_vec4 padding = ctx->items[id].padding;
-    layx_vec4 margins = ctx->items[id].margins;
+    layx_vec4 borders = ctx->items[id].border;
     
-    *x = rect[0] + padding[0] + margins[0];
-    *y = rect[1] + padding[1] + margins[1];
-    *width = rect[2] - (padding[0] + padding[2] + margins[0] + margins[2]);
-    *height = rect[3] - (padding[1] + padding[3] + margins[1] + margins[3]);
+    *x = rect[0] + padding[0] + borders[0];
+    *y = rect[1] + padding[1] + borders[1];
+    *width = rect[2] - (padding[0] + padding[2] + borders[0] + borders[2]);
+    *height = rect[3] - (padding[1] + padding[3] + borders[1] + borders[3]);
 }
 
 
