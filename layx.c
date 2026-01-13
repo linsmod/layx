@@ -458,6 +458,35 @@ void layx_set_max_height(layx_context *ctx, layx_id item, layx_scalar max_height
     pitem->max_size[1] = max_height;
 }
 
+void layx_set_position(layx_context *ctx, layx_id item, layx_scalar left, layx_scalar top, layx_scalar right, layx_scalar bottom)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->position[0] = left;
+    pitem->position[1] = top;
+    pitem->position[2] = right;
+    pitem->position[3] = bottom;
+}
+void layx_set_position_lt(layx_context *ctx, layx_id item, layx_scalar left, layx_scalar top){
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->position[0] = left;
+    pitem->position[1] = top;
+}
+
+void layx_set_position_rb(layx_context *ctx, layx_id item, layx_scalar right, layx_scalar bottom){
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    pitem->position[2] = right;
+    pitem->position[3] = bottom;
+}
+
+void layx_get_position_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    *left = pitem->position[0];
+    *top = pitem->position[1];
+    *right = pitem->position[2];
+    *bottom = pitem->position[3];
+}
+
 void layx_set_size(layx_context *ctx, layx_id item, layx_scalar width, layx_scalar height)
 {
     layx_set_width(ctx, item, width);
@@ -1174,6 +1203,44 @@ void layx_arrange_stacked(
     }
 }
 
+static void layx_align_baseline(layx_context *ctx, layx_id container, int dim)
+{
+    layx_item_t *pcontainer = layx_get_item(ctx, container);
+    float max_baseline = 0;
+    
+    // 第一步：收集所有子项的基线信息
+    layx_id child = pcontainer->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        
+        if (pchild->has_baseline) {
+            max_baseline = layx_float_max(max_baseline, pchild->baseline);
+        } else {
+            // 对于没有基线的项目，使用默认值（如高度）
+            max_baseline = layx_float_max(max_baseline, 
+                                         ctx->rects[child][3] * 0.8f); // 80%高度
+        }
+        
+        child = layx_next_sibling(ctx, child);
+    }
+    
+    // 第二步：根据基线对齐调整位置
+    child = pcontainer->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        layx_vec4 rect = ctx->rects[child];
+        
+        float child_baseline = pchild->has_baseline ? 
+                              pchild->baseline : rect[3] * 0.8f;
+        
+        // 调整位置使基线对齐
+        float adjustment = max_baseline - child_baseline;
+        rect[1] += adjustment;  // 调整Y位置
+        
+        ctx->rects[child] = rect;
+        child = layx_next_sibling(ctx, child);
+    }
+}
 // Helper to arrange overlay items (cross-axis alignment)
 static LAYX_FORCE_INLINE
 void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
@@ -1204,7 +1271,11 @@ void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
         }
 
         // Apply alignment
-        if (align == LAYX_ALIGN_ITEMS_CENTER || align == LAYX_ALIGN_SELF_CENTER) {
+        if (align_items == LAYX_ALIGN_ITEMS_BASELINE) {
+            layx_align_baseline(ctx, item, dim);
+            return;
+        }
+        else if (align == LAYX_ALIGN_ITEMS_CENTER || align == LAYX_ALIGN_SELF_CENTER) {
             // CENTER: center in available space
             child_rect[dim] += (space - child_rect[2 + dim]) / 2 - child_margins[wdim];
         } else if (align == LAYX_ALIGN_ITEMS_FLEX_END || align == LAYX_ALIGN_SELF_FLEX_END) {
@@ -1233,7 +1304,6 @@ void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
         child = pchild->next_sibling;
     }
 }
-
 // Helper to arrange overlay squeezed range
 static LAYX_FORCE_INLINE
 void layx_arrange_overlay_squeezed_range(

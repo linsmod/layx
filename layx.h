@@ -88,6 +88,7 @@ typedef struct layx_item_t {
     layx_vec2 size;
     layx_vec2 min_size;
     layx_vec2 max_size;
+    layx_vec4 position; // l t r b
     layx_scalar flex_grow;
     layx_scalar flex_shrink;
     layx_scalar flex_basis;
@@ -103,6 +104,9 @@ typedef struct layx_item_t {
     uint8_t overflow_x;          // overflow-x 属性
     uint8_t overflow_y;          // overflow-y 属性
     uint8_t has_scrollbars;      // 标志位：是否有滚动条 (bit0=v, bit1=h)
+
+    float baseline;          // 基线偏移（从项目顶部算起）
+    uint8_t has_baseline;    // 是否有有效的基线信息
     
     // ============ 新增：文本测量相关字段 ============
     layx_measure_text_fn measure_text_fn;  // NULL 表示不是文本节点
@@ -299,6 +303,14 @@ LAYX_EXPORT void layx_set_max_height(layx_context *ctx, layx_id item, layx_scala
 LAYX_EXPORT void layx_set_size(layx_context *ctx, layx_id item, layx_scalar width, layx_scalar height);
 LAYX_EXPORT layx_vec2 layx_get_size(layx_context *ctx, layx_id item);
 
+// Position properties
+LAYX_EXPORT void layx_set_position_lt(layx_context *ctx, layx_id item, layx_scalar left, layx_scalar top);
+LAYX_EXPORT void layx_set_position_rb(layx_context *ctx, layx_id item, layx_scalar right, layx_scalar bottom);
+LAYX_EXPORT void layx_set_left(layx_context *ctx, layx_id item, layx_scalar left);
+LAYX_EXPORT void layx_set_right(layx_context *ctx, layx_id item, layx_scalar right);
+LAYX_EXPORT void layx_set_top(layx_context *ctx, layx_id item, layx_scalar top);
+LAYX_EXPORT void layx_set_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
+
 // Flex item properties
 LAYX_EXPORT void layx_set_flex_grow(layx_context *ctx, layx_id item, layx_scalar grow);
 LAYX_EXPORT void layx_set_flex_shrink(layx_context *ctx, layx_id item, layx_scalar shrink);
@@ -406,6 +418,24 @@ LAYX_STATIC_INLINE void layx_get_rect_xywh(
     *y = rect[1];
     *width = rect[2];
     *height = rect[3];
+}
+LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id id, layx_scalar x, layx_scalar y){
+    layx_vec4 rect = ctx->rects[id];
+    return x >= rect[0] && x < rect[0] + rect[2] && y >= rect[1] && y < rect[1] + rect[3];
+}
+LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
+        const layx_context *ctx, layx_id id,
+        layx_scalar *x, layx_scalar *y, layx_scalar *width, layx_scalar *height)
+{
+    LAYX_ASSERT(id != LAYX_INVALID_ID && id < ctx->count);
+    layx_vec4 rect = ctx->rects[id];
+    layx_vec4 padding = ctx->items[id].padding;
+    layx_vec4 margins = ctx->items[id].margins;
+    
+    *x = rect[0] + padding[0] + margins[0];
+    *y = rect[1] + padding[1] + margins[1];
+    *width = rect[2] - (padding[0] + padding[2] + margins[0] + margins[2]);
+    *height = rect[3] - (padding[1] + padding[3] + margins[1] + margins[3]);
 }
 
 // Scroll functions (implemented in scroll_utils.c)
