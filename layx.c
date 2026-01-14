@@ -1004,7 +1004,14 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
                 }
             }
         } else {
-            cal_size = layx_calc_overlayed_size(ctx, item, dim);
+            // DISPLAY_BLOCK: 子元素在水平方向上叠加，在垂直方向上堆叠
+            if (dim == 1) {
+                // Y 轴（垂直方向）：使用 stacked（堆叠）
+                cal_size = layx_calc_stacked_size(ctx, item, dim);
+            } else {
+                // X 轴（水平方向）：使用 overlay（叠加）
+                cal_size = layx_calc_overlayed_size(ctx, item, dim);
+            }
         }
 
         cal_size += pitem->padding[dim] + pitem->border[dim] 
@@ -1456,7 +1463,14 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
             }
         }
     } else {
-        layx_arrange_overlay(ctx, item, dim);
+        // DISPLAY_BLOCK: 子元素在水平方向上叠加，在垂直方向上堆叠
+        if (dim == 1) {
+            // Y 轴（垂直方向）：使用 stacked（堆叠）
+            layx_arrange_stacked(ctx, item, dim, false);
+        } else {
+            // X 轴（水平方向）：使用 overlay（叠加）
+            layx_arrange_overlay(ctx, item, dim);
+        }
     }
     
     // 递归处理子项
