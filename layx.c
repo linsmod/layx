@@ -1045,7 +1045,7 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
     ctx->rects[item][2 + dim] = result_size;
     // DEBUG: 打印尺寸设置信息
     layx_id first_child = pitem->first_child;
-    printf("DEBUG: layx_calc_size(item=%d, dim=%d, has_child=%d, size[%.1f,%.1f]) -> rect[%d]=%.1f\n",
+    LAYX_DEBUG_PRINT("DEBUG: layx_calc_size(item=%d, dim=%d, has_child=%d, size[%.1f,%.1f]) -> rect[%d]=%.1f\n",
            item, dim, first_child != LAYX_INVALID_ID, pitem->size[0], pitem->size[1], 2 + dim, result_size);
 }
 
@@ -1074,7 +1074,7 @@ void layx_arrange_stacked(
         // 用于计算flex-shrink权重
         float total_shrink_factor = 0.0f;
 
-        printf("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
+        LAYX_DEBUG_PRINT("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
         
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
@@ -1454,7 +1454,7 @@ static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
         const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
         const layx_scalar space = layx_get_internal_space(ctx, item, dim);
 
-        printf("DEBUG layx_arrange_block(item=%d, dim=0): offset=%.1f, space=%.1f\n", item, offset, space);
+        LAYX_DEBUG_PRINT("DEBUG layx_arrange_block(item=%d, dim=0): offset=%.1f, space=%.1f\n", item, offset, space);
 
         layx_id child = pitem->first_child;
         while (child != LAYX_INVALID_ID) {
@@ -1472,13 +1472,13 @@ static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
             if (pchild->flags & LAYX_SIZE_FIXED_WIDTH) {
                 // 如果子元素有固定宽度，保持原宽度
                 // child_rect[2] 已经在 layx_calc_size 中设置了
-                printf("DEBUG layx_arrange_block: child %d has fixed width %.1f\n",
+                LAYX_DEBUG_PRINT("DEBUG layx_arrange_block: child %d has fixed width %.1f\n",
                        child, child_rect[2]);
             } else {
                 // 如果子元素没有固定宽度，填充可用空间
                 layx_scalar available_width = space - child_margins[0] - child_margins[2];
                 child_rect[2] = available_width;
-                printf("DEBUG layx_arrange_block: child %d set width to %.1f (space=%.1f, margins=[%.1f,%.1f])\n",
+                LAYX_DEBUG_PRINT("DEBUG layx_arrange_block: child %d set width to %.1f (space=%.1f, margins=[%.1f,%.1f])\n",
                        child, available_width, space, child_margins[0], child_margins[2]);
             }
 
@@ -1632,7 +1632,7 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
     
     // 递归处理子项
     layx_id child = pitem->first_child;
-    printf("DEBUG: layx_arrange(item=%d, dim=%d, display=%d) -> first_child=%d\n", item, dim, display, child);
+    LAYX_DEBUG_PRINT("DEBUG: layx_arrange(item=%d, dim=%d, display=%d) -> first_child=%d\n", item, dim, display, child);
     while (child != LAYX_INVALID_ID) {
         layx_arrange(ctx, child, dim);
         child = layx_next_sibling(ctx, child);

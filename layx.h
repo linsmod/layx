@@ -23,6 +23,19 @@
 #define LAYX_ASSERT assert
 #endif
 
+// Debug output control
+// Define LAYX_DEBUG=1 to enable debug output
+#ifndef LAYX_DEBUG
+#define LAYX_DEBUG 0
+#endif
+
+#if LAYX_DEBUG
+#include <stdio.h>
+#define LAYX_DEBUG_PRINT(fmt, ...) printf(fmt, ##__VA_ARGS__)
+#else
+#define LAYX_DEBUG_PRINT(fmt, ...) ((void)0)
+#endif
+
 // 'static inline' for things we always want inlined
 #if defined(__GNUC__) || defined(__clang__)
 #define LAYX_STATIC_INLINE __attribute__((always_inline)) static inline
