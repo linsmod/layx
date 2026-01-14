@@ -58,8 +58,8 @@ static bool has_fixed_height(const layx_item_t *item) {
     return (item->flags & LAYX_SIZE_FIXED_HEIGHT) != 0;
 }
 
-static bool is_flex_container(const layx_item_t *item) {
-    return (item->flags & LAYX_LAYOUT_MODEL_MASK) != 0;
+static bool is_flex_container_test(const layx_item_t *item) {
+    return layx_is_flex_container(item->flags);
 }
 
 /**
@@ -120,7 +120,7 @@ void test_container_defaults(void) {
                 "align-self默认为auto (未设置，继承父容器的align-items)");
     
     // 默认不是flex容器
-    TEST_ASSERT(!is_flex_container(item),
+    TEST_ASSERT(!is_flex_container_test(item),
                 "默认display不是flex (需要显式设置)");
     
     // flex-grow默认为0

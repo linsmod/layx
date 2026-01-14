@@ -60,21 +60,21 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
     
     // 检查是否是flex容器以及flex方向
     uint32_t flags = pitem->flags;
-    uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
+    layx_display display = layx_get_display_from_flags(flags);
     layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
     
     // 判断是否是column方向的flex布局
-    int is_flex_column = (model != 0) &&
+    int is_flex_column = display == LAYX_DISPLAY_FLEX &&
                          (direction == LAYX_FLEX_DIRECTION_COLUMN ||
                           direction == LAYX_FLEX_DIRECTION_COLUMN_REVERSE);
     
     // 判断是否是row方向的flex布局
-    int is_flex_row = (model != 0) &&
+    int is_flex_row = display == LAYX_DISPLAY_FLEX &&
                        (direction == LAYX_FLEX_DIRECTION_ROW ||
                         direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
     
     // BLOCK布局在垂直方向堆叠子项，类似于flex column
-    int is_block_stacked = (model == 0);
+    int is_block_stacked = display == LAYX_DISPLAY_BLOCK;
     
     // 有子项时，计算所有子项的边界框（相对于内容区域）
     layx_scalar max_content_width = 0.0f;

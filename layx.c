@@ -48,7 +48,7 @@ static LAYX_FORCE_INLINE float layx_float_min(float a, float b)
 
 // Helper functions to convert new enums to internal flags
 static LAYX_FORCE_INLINE uint32_t layx_display_to_flags(layx_display display) {
-    return (display == LAYX_DISPLAY_FLEX) ? LAYX_LAYOUT_MODEL_MASK : 0;
+    return ((uint32_t)display & 0x3) << 2;  // Bits 2-3 for display type
 }
 
 static LAYX_FORCE_INLINE uint32_t layx_flex_direction_to_flags(layx_flex_direction direction) {
@@ -73,11 +73,6 @@ static LAYX_FORCE_INLINE uint32_t layx_align_content_to_flags(layx_align_content
 
 static LAYX_FORCE_INLINE uint32_t layx_align_self_to_flags(layx_align_self align) {
     return (uint32_t)align;
-}
-
-// Helper to check if flex container
-static LAYX_FORCE_INLINE bool layx_is_flex_container(uint32_t flags) {
-    return (flags & LAYX_LAYOUT_MODEL_MASK) != 0;
 }
 
 // Helper to get direction dimension
@@ -299,7 +294,7 @@ void layx_set_display(layx_context *ctx, layx_id item, layx_display display)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     uint32_t flags = pitem->flags;
-    flags &= ~LAYX_LAYOUT_MODEL_MASK;
+    flags &= ~LAYX_DISPLAY_TYPE_MASK;
     flags |= layx_display_to_flags(display);
     pitem->flags = flags;
 }
@@ -308,13 +303,10 @@ const char* layx_get_display_string(layx_display display) {
     switch (display) {
         case LAYX_DISPLAY_BLOCK: return "BLOCK";
         case LAYX_DISPLAY_FLEX: return "FLEX";
+        case LAYX_DISPLAY_INLINE: return "INLINE";
+        case LAYX_DISPLAY_INLINE_BLOCK: return "INLINE_BLOCK";
         default: return "UNKNOWN";
     }
-}
-
-// Helper to get display from flags
-static LAYX_FORCE_INLINE layx_display layx_get_display_from_flags(uint32_t flags) {
-    return (flags & LAYX_LAYOUT_MODEL_MASK) ? LAYX_DISPLAY_FLEX : LAYX_DISPLAY_BLOCK;
 }
 
 // Flex properties
@@ -977,10 +969,10 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
     } else {
         layx_scalar cal_size;
         layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
-        uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
+        layx_display display = layx_get_display_from_flags(flags);
         layx_flex_wrap wrap = (layx_flex_wrap)(flags & LAYX_FLEX_WRAP_MASK);
         
-        if (model != 0) {
+        if (display == LAYX_DISPLAY_FLEX) {
             bool is_wrapped = (wrap != LAYX_FLEX_WRAP_NOWRAP);
             bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
             
@@ -1003,13 +995,23 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
                     cal_size = layx_calc_overlayed_size(ctx, item, dim);
                 }
             }
-        } else {
-            // DISPLAY_BLOCK: 子元素在水平方向上叠加，在垂直方向上堆叠
+        } else if (display == LAYX_DISPLAY_BLOCK || display == LAYX_DISPLAY_INLINE_BLOCK) {
+            // DISPLAY_BLOCK 和 DISPLAY_INLINE_BLOCK: 子元素在水平方向上叠加，在垂直方向上堆叠
             if (dim == 1) {
                 // Y 轴（垂直方向）：使用 stacked（堆叠）
                 cal_size = layx_calc_stacked_size(ctx, item, dim);
             } else {
                 // X 轴（水平方向）：使用 overlay（叠加）
+                cal_size = layx_calc_overlayed_size(ctx, item, dim);
+            }
+        } else if (display == LAYX_DISPLAY_INLINE) {
+            // DISPLAY_INLINE: 宽度由内容决定，使用 overlayed size
+            cal_size = layx_calc_overlayed_size(ctx, item, dim);
+        } else {
+            // 默认情况，使用 block 布局
+            if (dim == 1) {
+                cal_size = layx_calc_stacked_size(ctx, item, dim);
+            } else {
                 cal_size = layx_calc_overlayed_size(ctx, item, dim);
             }
         }
@@ -1048,8 +1050,7 @@ void layx_arrange_stacked(
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     const uint32_t item_flags = pitem->flags;
-    uint32_t model = item_flags & LAYX_LAYOUT_MODEL_MASK;
-    int is_flex_container = (model != 0);  // 只在 flex 容器中应用 flex-shrink
+    int is_flex_container = layx_is_flex_container(item_flags);  // 只在 flex 容器中应用 flex-shrink
     layx_scalar space = layx_get_internal_space(ctx, item, dim);
     layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
 
@@ -1428,52 +1429,175 @@ layx_scalar layx_arrange_wrapped_overlay_squeezed(
     return offset;
 }
 
+// 独立的 block 布局函数
+// BLOCK: 元素独占一行，子元素在水平方向上叠加，在垂直方向上堆叠
+static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+
+    if (dim == 1) {
+        // Y 轴（垂直方向）：使用 stacked（堆叠）- 子元素从上到下排列
+        layx_arrange_stacked(ctx, item, dim, false);
+    } else {
+        // X 轴（水平方向）：使用 overlay（叠加）- 子元素左对齐
+        // 对于 BLOCK，子元素宽度由 padding-box 决定，需要考虑 margin
+        const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
+        const layx_scalar space = layx_get_internal_space(ctx, item, dim);
+        
+        layx_id child = pitem->first_child;
+        while (child != LAYX_INVALID_ID) {
+            layx_item_t *pchild = layx_get_item(ctx, child);
+            layx_vec4 child_rect = ctx->rects[child];
+            const layx_vec4 child_margins = pchild->margins;
+            
+            // 子元素左对齐
+            child_rect[dim] = offset + child_margins[dim];
+            ctx->rects[child] = child_rect;
+            
+            child = pchild->next_sibling;
+        }
+    }
+}
+
+// Inline 布局函数
+// INLINE: 元素在一行内排列，宽度由内容决定
+static void layx_arrange_inline(layx_context *ctx, layx_id item, int dim)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    
+    // INLINE 元素的宽度由内容决定，不支持 flex 属性
+    // 子元素在一行内排列，如果超出宽度则换行
+    if (dim == 0) {
+        // X 轴（水平方向）：子元素从左到右排列
+        const layx_scalar offset = layx_get_content_offset(ctx, item, 0);
+        const layx_scalar space = layx_get_internal_space(ctx, item, 0);
+        
+        float x = (float)offset;
+        float line_start = x;
+        float max_line_width = 0.0f;
+        
+        layx_id child = pitem->first_child;
+        while (child != LAYX_INVALID_ID) {
+            layx_item_t *pchild = layx_get_item(ctx, child);
+            layx_vec4 child_rect = ctx->rects[child];
+            const layx_vec4 child_margins = pchild->margins;
+            
+            float child_width = (float)child_rect[2] + (float)child_margins[0] + (float)child_margins[2];
+            
+            // 检查是否需要换行
+            if (x + child_width > offset + space && x > line_start) {
+                x = (float)offset;  // 换行
+            }
+            
+            child_rect[0] = (layx_scalar)x;
+            x += child_width;
+            max_line_width = layx_float_max(max_line_width, x - offset);
+            
+            ctx->rects[child] = child_rect;
+            child = pchild->next_sibling;
+        }
+    } else {
+        // Y 轴（垂直方向）：使用 overlay（叠加）
+        layx_arrange_overlay(ctx, item, 1);
+    }
+}
+
+// Inline-block 布局函数
+// INLINE_BLOCK: 元素在一行内排列，但可以设置宽高
+static void layx_arrange_inline_block(layx_context *ctx, layx_id item, int dim)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    
+    // INLINE_BLOCK 元素在一行内排列，支持设置宽高
+    if (dim == 0) {
+        // X 轴（水平方向）：子元素从左到右排列
+        const layx_scalar offset = layx_get_content_offset(ctx, item, 0);
+        const layx_scalar space = layx_get_internal_space(ctx, item, 0);
+        
+        float x = (float)offset;
+        float line_start = x;
+        float max_line_width = 0.0f;
+        
+        layx_id child = pitem->first_child;
+        while (child != LAYX_INVALID_ID) {
+            layx_item_t *pchild = layx_get_item(ctx, child);
+            layx_vec4 child_rect = ctx->rects[child];
+            const layx_vec4 child_margins = pchild->margins;
+            
+            float child_width = (float)child_rect[2] + (float)child_margins[0] + (float)child_margins[2];
+            
+            // 检查是否需要换行
+            if (x + child_width > offset + space && x > line_start) {
+                x = (float)offset;  // 换行
+            }
+            
+            child_rect[0] = (layx_scalar)x;
+            x += child_width;
+            max_line_width = layx_float_max(max_line_width, x - offset);
+            
+            ctx->rects[child] = child_rect;
+            child = pchild->next_sibling;
+        }
+    } else {
+        // Y 轴（垂直方向）：使用 overlay（叠加）
+        layx_arrange_overlay(ctx, item, 1);
+    }
+}
+
 // PHASE 2: Arrange items (second pass)
 static void layx_arrange(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     const uint32_t flags = pitem->flags;
-    uint32_t model = flags & LAYX_LAYOUT_MODEL_MASK;
+    layx_display display = layx_get_display_from_flags(flags);
     layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
     layx_flex_wrap wrap = (layx_flex_wrap)(flags & LAYX_FLEX_WRAP_MASK);
     
-    if (model != 0) {
-        bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
-        bool is_wrapped = (wrap != LAYX_FLEX_WRAP_NOWRAP);
-        
-        if (is_wrapped) {
-            if (is_row_direction) {
-                if (dim == 0) {
-                    layx_arrange_stacked(ctx, item, 0, true);
+    // 根据不同的 display 类型调用不同的布局函数
+    switch (display) {
+        case LAYX_DISPLAY_BLOCK:
+            layx_arrange_block(ctx, item, dim);
+            break;
+        case LAYX_DISPLAY_INLINE:
+            layx_arrange_inline(ctx, item, dim);
+            break;
+        case LAYX_DISPLAY_INLINE_BLOCK:
+            layx_arrange_inline_block(ctx, item, dim);
+            break;
+        case LAYX_DISPLAY_FLEX: {
+            bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
+            bool is_wrapped = (wrap != LAYX_FLEX_WRAP_NOWRAP);
+            
+            if (is_wrapped) {
+                if (is_row_direction) {
+                    if (dim == 0) {
+                        layx_arrange_stacked(ctx, item, 0, true);
+                    } else {
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item, 1);
+                    }
                 } else {
-                    layx_arrange_wrapped_overlay_squeezed(ctx, item, 1);
+                    if (dim == 1) {
+                        layx_arrange_stacked(ctx, item, 1, true);
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item, 0);
+                    } else {
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item, 0);
+                    }
                 }
             } else {
-                if (dim == 1) {
-                    layx_arrange_stacked(ctx, item, 1, true);
-                    layx_arrange_wrapped_overlay_squeezed(ctx, item, 0);
+                if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
+                    layx_arrange_stacked(ctx, item, dim, false);
                 } else {
-                    layx_arrange_wrapped_overlay_squeezed(ctx, item, 0);
+                    // Use layx_arrange_overlay for cross-axis alignment (align-items)
+                    layx_arrange_overlay(ctx, item, dim);
                 }
             }
-        } else {
-            if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
-                layx_arrange_stacked(ctx, item, dim, false);
-            } else {
-                // Use layx_arrange_overlay for cross-axis alignment (align-items)
-                layx_arrange_overlay(ctx, item, dim);
-            }
+            break;
         }
-    } else {
-        // DISPLAY_BLOCK: 子元素在水平方向上叠加，在垂直方向上堆叠
-        if (dim == 1) {
-            // Y 轴（垂直方向）：使用 stacked（堆叠）
-            layx_arrange_stacked(ctx, item, dim, false);
-        } else {
-            // X 轴（水平方向）：使用 overlay（叠加）
-            layx_arrange_overlay(ctx, item, dim);
-        }
+        default:
+            // 未知类型，默认使用 block 布局
+            layx_arrange_block(ctx, item, dim);
+            break;
     }
     
     // 递归处理子项
