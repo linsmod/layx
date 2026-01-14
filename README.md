@@ -13,7 +13,11 @@ LayX是一个用C语言实现的CSS Flexbox布局引擎，提供高性能的二�
 ## 支持的CSS属性
 
 ### 布局模型
-- `display: block | flex`
+- `display: block | flex | inline | inline-block`
+  - **block**: 子元素垂直堆叠，宽度填充容器
+  - **flex**: Flexbox 弹性布局
+  - **inline**: 行内元素，宽度由内容决定
+  - **inline-block**: 行内块级元素，支持设置宽高
 - `flex-direction: row | column | row-reverse | column-reverse`
 - `flex-wrap: nowrap | wrap | wrap-reverse`
 
@@ -36,6 +40,75 @@ LayX是一个用C语言实现的CSS Flexbox布局引擎，提供高性能的二�
 
 ### 滚动和溢出
 - `overflow-x | overflow-y | overflow: visible | hidden | scroll | auto`
+
+## Display 类型详解
+
+LayX 支持 4 种 display 类型，对应 CSS 规范中的布局模式：
+
+### 1. BLOCK（块级布局）
+```c
+layx_set_display(&ctx, container, LAYX_DISPLAY_BLOCK);
+```
+- 子元素垂直堆叠（从上到下）
+- 子元素宽度填充容器（减去 margin）
+- 子元素高度由内容或设置值决定
+- 适合垂直排列的列表、表单等
+
+**示例：**
+```c
+layx_id container = layx_item(&ctx);
+layx_set_size(&ctx, container, 400, 0);
+layx_set_display(&ctx, container, LAYX_DISPLAY_BLOCK);
+layx_set_padding(&ctx, container, 10);
+
+layx_id child1 = layx_item(&ctx);
+layx_set_size(&ctx, child1, 100, 50);
+layx_append(&ctx, container, child1);
+
+layx_id child2 = layx_item(&ctx);
+layx_set_size(&ctx, child2, 100, 50);
+layx_insert_after(&ctx, child1, child2);  // 在 child1 之后插入
+```
+
+### 2. FLEX（弹性布局）
+```c
+layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_ROW);
+```
+- 子元素可水平或垂直排列
+- 支持弹性伸缩、对齐、换行
+- 功能最强大的布局模式
+- 适合复杂的自适应布局
+
+**示例：**
+```c
+layx_id container = layx_item(&ctx);
+layx_set_size(&ctx, container, 600, 100);
+layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
+layx_set_flex_direction(&ctx, container, LAYX_FLEX_DIRECTION_ROW);
+layx_set_justify_content(&ctx, container, LAYX_JUSTIFY_SPACE_BETWEEN);
+
+layx_id child1 = layx_item(&ctx);
+layx_set_size(&ctx, child1, 100, 50);
+layx_append(&ctx, container, child1);
+```
+
+### 3. INLINE（行内布局）
+```c
+layx_set_display(&ctx, item, LAYX_DISPLAY_INLINE);
+```
+- 宽度由内容决定
+- 子元素在一行内排列，超出则换行
+- 不能设置宽高（忽略）
+- 适合文本、按钮等行内元素
+
+### 4. INLINE_BLOCK（行内块级布局）
+```c
+layx_set_display(&ctx, item, LAYX_DISPLAY_INLINE_BLOCK);
+```
+- 宽度由内容决定，但可以设置宽高
+- 子元素在一行内排列，超出则换行
+- 适合需要设置尺寸的行内元素（如图标、小卡片）
 
 ## 滚动功能
 
@@ -232,10 +305,20 @@ int main() {
     layx_set_display(&ctx, root, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, root, LAYX_FLEX_DIRECTION_ROW);
     
-    // 添加子元素
-    layx_id child = layx_item(&ctx);
-    layx_set_size(&ctx, child, 100, 100);
-    layx_insert(&ctx, root, child);
+    // 添加子元素到容器末尾
+    layx_id child1 = layx_item(&ctx);
+    layx_set_size(&ctx, child1, 100, 100);
+    layx_append(&ctx, root, child1);
+
+    // 添加子元素到容器开头
+    layx_id child0 = layx_item(&ctx);
+    layx_set_size(&ctx, child0, 50, 50);
+    layx_prepend(&ctx, root, child0);
+
+    // 在 child1 之后插入兄弟元素
+    layx_id child2 = layx_item(&ctx);
+    layx_set_size(&ctx, child2, 80, 80);
+    layx_insert_after(&ctx, child1, child2);
     
     // 设置滚动和溢出
     layx_set_overflow_x(&ctx, root, LAYX_OVERFLOW_AUTO);
@@ -246,8 +329,8 @@ int main() {
     layx_run_context(&ctx);
     
     // 获取结果
-    layx_vec4 rect = layx_get_rect(&ctx, child);
-    printf("Child position: (%.2f, %.2f), size: (%.2f, %.2f)\n", 
+    layx_vec4 rect = layx_get_rect(&ctx, child1);
+    printf("Child1 position: (%.2f, %.2f), size: (%.2f, %.2f)\n",
            rect[0], rect[1], rect[2], rect[3]);
     
     // 滚动操作
@@ -263,35 +346,48 @@ int main() {
 ## 测试
 
 项目包含完整的测试用例：
-- `test_layx.c` - 基础功能演示
-- `test_layout_patterns.c` - 复杂布局模式测试
-- `test_defaults.c` - 默认值和边界条件测试
-- `test_scroll.c` - 滚动和溢出功能测试
+- `test_layx.c` - 基础功能演示（46个测试）
+- `test_layout_patterns.c` - 复杂布局模式测试（38个测试）
+- `test_defaults.c` - 默认值和边界条件测试（8个测试）
+- `test_scroll.c` - 滚动和溢出功能测试（40个测试）
+- `test_scroll_max.c` - 滚动最大值测试（40个测试）
+- `test_flex_margin.c` - Flexbox 布局中 margin 行为测试（27个测试）
+- `test_block_margin.c` - BLOCK 布局中 margin 行为测试（8个测试）
+- `test_display_types.c` - Display 类型测试（20个测试）
+- `test_web_api.c` - Web 标准 API 兼容性测试
 - `debug_*.c` - 各对齐属性的可视化调试程序
 
 运行测试：
 ```bash
 cd build
+make tests      # 运行所有测试
 ./test_layx
 ./test_layout_patterns
 ./test_scroll
 ```
 
+所有测试均通过（共 171 个测试用例）。
+
 ## 项目结构
 
 ```
 mylayout/
-├── layx.h              # 公共头文件，API定义
-├── layx.c              # 核心实现
-├── scroll_utils.h      # 滚动工具头文件
-├── scroll_utils.c      # 滚动功能实现
-├── test_layx.c         # 基础测试
-├── test_layout_patterns.c # 布局模式测试
-├── test_defaults.c     # 默认值测试
-├── test_scroll.c       # 滚动功能测试
-├── debug_*.c           # 调试工具
-├── CMakeLists.txt      # 构建配置
-└── README.md           # 项目文档
+├── layx.h                  # 公共头文件，API定义
+├── layx.c                  # 核心实现
+├── scroll_utils.h          # 滚动工具头文件
+├── scroll_utils.c          # 滚动功能实现
+├── test_layx.c             # 基础测试（46个测试）
+├── test_layout_patterns.c   # 布局模式测试（38个测试）
+├── test_defaults.c          # 默认值测试（8个测试）
+├── test_scroll.c            # 滚动功能测试（40个测试）
+├── test_scroll_max.c       # 滚动最大值测试（40个测试）
+├── test_flex_margin.c      # Flexbox margin 测试（27个测试）
+├── test_block_margin.c      # BLOCK margin 测试（8个测试）
+├── test_display_types.c     # Display 类型测试（20个测试）
+├── test_web_api.c           # Web 标准 API 测试
+├── debug_*.c               # 调试工具
+├── CMakeLists.txt          # 构建配置
+└── README.md               # 项目文档
 ```
 
 ## 设计理念

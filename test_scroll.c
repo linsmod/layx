@@ -56,7 +56,7 @@ void test_auto_horizontal_scrollbar(void) {
     // 创建子项使内容超出容器宽度
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 300, 50);
-    layx_push(&ctx, container, child1);
+    layx_prepend(&ctx, container, child1);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -105,22 +105,22 @@ void test_auto_vertical_scrollbar(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_min_size(&ctx, child1, 100, 50);  // 防止被压缩
-    layx_push(&ctx, container, child1);
+    layx_prepend(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_min_size(&ctx, child2, 100, 50);  // 防止被压缩
-    layx_push(&ctx, container, child2);
+    layx_prepend(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
     layx_set_min_size(&ctx, child3, 100, 50);  // 防止被压缩
-    layx_push(&ctx, container, child3);
+    layx_prepend(&ctx, container, child3);
 
     layx_id child4 = layx_item(&ctx);
     layx_set_size(&ctx, child4, 100, 50);
     layx_set_min_size(&ctx, child4, 100, 50);  // 防止被压缩
-    layx_push(&ctx, container, child4);
+    layx_prepend(&ctx, container, child4);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -152,7 +152,7 @@ void test_overflow_scroll_always(void) {
     // 添加超出容器的子项，使内容溢出
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -184,7 +184,7 @@ void test_overflow_hidden_no_scrollbars(void) {
     // 添加大子项使内容超出
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -217,7 +217,7 @@ void test_overflow_visible_no_scrollbars(void) {
     // 添加大子项使内容超出
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -253,7 +253,7 @@ void test_scroll_to(void) {
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
     layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -290,7 +290,7 @@ void test_scroll_by(void) {
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
     layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -330,7 +330,7 @@ void test_scroll_range_clamping(void) {
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
     layx_set_min_size(&ctx, child, 300, 300);  // 防止在column方向被压缩
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -382,11 +382,11 @@ void test_get_content_size(void) {
     // 添加子项
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_push(&ctx, container, child1);
+    layx_prepend(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_push(&ctx, container, child2);
+    layx_prepend(&ctx, container, child2);
 
     layx_run_context(&ctx);
 
@@ -417,7 +417,7 @@ void test_container_layout_with_padding(void) {
     // 添加超出容器的子项
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 50);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -454,7 +454,7 @@ void test_visible_area_calculation(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 50);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -494,7 +494,7 @@ void test_overflow_x_y_independent(void) {
     // 添加宽高都超出的子项
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -526,7 +526,7 @@ void test_dynamic_content_change(void) {
     // 初始：内容不溢出，没有滚动条
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
     int has_scroll1 = layx_has_horizontal_scrollbar(&ctx, container) || 
@@ -567,12 +567,12 @@ void test_nested_scroll_containers(void) {
     layx_set_overflow(&ctx, inner, LAYX_OVERFLOW_AUTO);
     layx_set_display(&ctx, inner, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, inner, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_push(&ctx, outer, inner);
+    layx_prepend(&ctx, outer, inner);
 
     // 内容项
     layx_id content = layx_item(&ctx);
     layx_set_size(&ctx, content, 800, 600);
-    layx_push(&ctx, inner, content);
+    layx_prepend(&ctx, inner, content);
 
     layx_run_context(&ctx);
 

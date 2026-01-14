@@ -274,9 +274,9 @@ LAYX_EXPORT layx_id layx_items_count(layx_context *ctx);
 LAYX_EXPORT layx_id layx_items_capacity(layx_context *ctx);
 LAYX_EXPORT layx_id layx_item(layx_context *ctx);
 LAYX_EXPORT int layx_is_inserted(layx_context *ctx, layx_id child);
-LAYX_EXPORT void layx_insert(layx_context *ctx, layx_id parent, layx_id child);
-LAYX_EXPORT void layx_append(layx_context *ctx, layx_id earlier, layx_id later);
-LAYX_EXPORT void layx_push(layx_context *ctx, layx_id parent, layx_id new_child);
+LAYX_EXPORT void layx_append(layx_context *ctx, layx_id parent, layx_id child);
+LAYX_EXPORT void layx_insert_after(layx_context *ctx, layx_id earlier, layx_id later);
+LAYX_EXPORT void layx_prepend(layx_context *ctx, layx_id parent, layx_id new_child);
 
 // Display property
 LAYX_EXPORT void layx_set_display(layx_context *ctx, layx_id item, layx_display display);
@@ -450,10 +450,10 @@ LAYX_STATIC_INLINE void layx_get_rect_xywh(
 {
     LAYX_ASSERT(id != LAYX_INVALID_ID && id < ctx->count);
     layx_vec4 rect = ctx->rects[id];
-    *x = rect[0];
-    *y = rect[1];
-    *width = rect[2];
-    *height = rect[3];
+    if (x) *x = rect[0];
+    if (y) *y = rect[1];
+    if (width) *width = rect[2];
+    if (height) *height = rect[3];
 }
 LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id id, layx_scalar x, layx_scalar y){
     layx_vec4 rect = ctx->rects[id];

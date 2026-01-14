@@ -211,7 +211,7 @@ layx_id layx_item(layx_context *ctx)
 }
 
 static LAYX_FORCE_INLINE
-void layx_append_by_ptr(
+void layx_insert_after_by_ptr(
         layx_item_t *LAYX_RESTRICT pearlier,
         layx_id later, layx_item_t *LAYX_RESTRICT plater)
 {
@@ -236,14 +236,14 @@ layx_id layx_last_child(const layx_context *ctx, layx_id parent)
     return result;
 }
 
-void layx_append(layx_context *ctx, layx_id earlier, layx_id later)
+void layx_insert_after(layx_context *ctx, layx_id earlier, layx_id later)
 {
     LAYX_ASSERT(later != 0);
     LAYX_ASSERT(earlier != later);
     layx_item_t *LAYX_RESTRICT pearlier = layx_get_item(ctx, earlier);
     layx_item_t *LAYX_RESTRICT plater = layx_get_item(ctx, later);
     plater->parent = pearlier->parent;  // 设置parent，与earlier的parent相同
-    layx_append_by_ptr(pearlier, later, plater);
+    layx_insert_after_by_ptr(pearlier, later, plater);
 }
 
 int layx_is_inserted(layx_context *ctx, layx_id child){
@@ -252,7 +252,7 @@ int layx_is_inserted(layx_context *ctx, layx_id child){
     return pchild->flags & LAYX_ITEM_INSERTED;
 }
 
-void layx_insert(layx_context *ctx, layx_id parent, layx_id child)
+void layx_append(layx_context *ctx, layx_id parent, layx_id child)
 {
     LAYX_ASSERT(child != 0);
     LAYX_ASSERT(parent != child);
@@ -271,11 +271,11 @@ void layx_insert(layx_context *ctx, layx_id parent, layx_id child)
             if (next == LAYX_INVALID_ID) break;
             pnext = layx_get_item(ctx, next);
         }
-        layx_append_by_ptr(pnext, child, pchild);
+        layx_insert_after_by_ptr(pnext, child, pchild);
     }
 }
 
-void layx_push(layx_context *ctx, layx_id parent, layx_id new_child)
+void layx_prepend(layx_context *ctx, layx_id parent, layx_id new_child)
 {
     LAYX_ASSERT(new_child != 0);
     LAYX_ASSERT(parent != new_child);
@@ -876,7 +876,8 @@ layx_scalar layx_calc_overlayed_size(
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-        layx_scalar child_size = rect[dim] + rect[2 + dim] + pchild->margins[wdim];
+        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
+        layx_scalar child_size = rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
         need_size = layx_scalar_max(need_size, child_size);
         child = pchild->next_sibling;
     }
@@ -895,7 +896,8 @@ layx_scalar layx_calc_stacked_size(
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-        need_size += rect[dim] + rect[2 + dim] + pchild->margins[wdim];
+        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
+        need_size += rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
         child = pchild->next_sibling;
     }
     return need_size;
@@ -918,7 +920,8 @@ layx_scalar layx_calc_wrapped_overlayed_size(
             need_size2 += need_size;
             need_size = 0;
         }
-        layx_scalar child_size = rect[dim] + rect[2 + dim] + pchild->margins[wdim];
+        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
+        layx_scalar child_size = rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
         need_size = layx_scalar_max(need_size, child_size);
         child = pchild->next_sibling;
     }
@@ -942,7 +945,8 @@ layx_scalar layx_calc_wrapped_stacked_size(
             need_size2 = layx_scalar_max(need_size2, need_size);
             need_size = 0;
         }
-        need_size += rect[dim] + rect[2 + dim] + pchild->margins[wdim];
+        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
+        need_size += rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
         child = pchild->next_sibling;
     }
     return layx_scalar_max(need_size2, need_size);
@@ -1039,6 +1043,10 @@ static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
     }
 
     ctx->rects[item][2 + dim] = result_size;
+    // DEBUG: 打印尺寸设置信息
+    layx_id first_child = pitem->first_child;
+    printf("DEBUG: layx_calc_size(item=%d, dim=%d, has_child=%d, size[%.1f,%.1f]) -> rect[%d]=%.1f\n",
+           item, dim, first_child != LAYX_INVALID_ID, pitem->size[0], pitem->size[1], 2 + dim, result_size);
 }
 
 // Helper to arrange stacked items
@@ -1056,15 +1064,17 @@ void layx_arrange_stacked(
 
     float max_x2 = (float)(content_offset + space);
 
-    layx_id start_child = pitem->first_child;
+        layx_id start_child = pitem->first_child;
     while (start_child != LAYX_INVALID_ID) {
         layx_scalar used = 0;
         uint32_t count = 0;
         uint32_t total = 0;
         bool hardbreak = false;
-        
+
         // 用于计算flex-shrink权重
         float total_shrink_factor = 0.0f;
+
+        printf("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
         
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
@@ -1443,17 +1453,37 @@ static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
         // 对于 BLOCK，子元素宽度由 padding-box 决定，需要考虑 margin
         const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
         const layx_scalar space = layx_get_internal_space(ctx, item, dim);
-        
+
+        printf("DEBUG layx_arrange_block(item=%d, dim=0): offset=%.1f, space=%.1f\n", item, offset, space);
+
         layx_id child = pitem->first_child;
         while (child != LAYX_INVALID_ID) {
             layx_item_t *pchild = layx_get_item(ctx, child);
             layx_vec4 child_rect = ctx->rects[child];
             const layx_vec4 child_margins = pchild->margins;
-            
+            const layx_vec4 child_padding = pchild->padding;
+            const layx_vec4 child_border = pchild->border;
+
             // 子元素左对齐
             child_rect[dim] = offset + child_margins[dim];
+
+            // BLOCK 布局中，子元素宽度填充可用空间（减去左右 margin）
+            // 但需要保留原有的 fixed width 如果设置了
+            if (pchild->flags & LAYX_SIZE_FIXED_WIDTH) {
+                // 如果子元素有固定宽度，保持原宽度
+                // child_rect[2] 已经在 layx_calc_size 中设置了
+                printf("DEBUG layx_arrange_block: child %d has fixed width %.1f\n",
+                       child, child_rect[2]);
+            } else {
+                // 如果子元素没有固定宽度，填充可用空间
+                layx_scalar available_width = space - child_margins[0] - child_margins[2];
+                child_rect[2] = available_width;
+                printf("DEBUG layx_arrange_block: child %d set width to %.1f (space=%.1f, margins=[%.1f,%.1f])\n",
+                       child, available_width, space, child_margins[0], child_margins[2]);
+            }
+
             ctx->rects[child] = child_rect;
-            
+
             child = pchild->next_sibling;
         }
     }
@@ -1602,6 +1632,7 @@ static void layx_arrange(layx_context *ctx, layx_id item, int dim)
     
     // 递归处理子项
     layx_id child = pitem->first_child;
+    printf("DEBUG: layx_arrange(item=%d, dim=%d, display=%d) -> first_child=%d\n", item, dim, display, child);
     while (child != LAYX_INVALID_ID) {
         layx_arrange(ctx, child, dim);
         child = layx_next_sibling(ctx, child);

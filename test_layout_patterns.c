@@ -48,15 +48,15 @@ void test_horizontal_layout() {
     // Create 3 items
     layx_id item1 = layx_item(&ctx);
     layx_set_size(&ctx, item1, 80, 60);
-    layx_insert(&ctx, container, item1);
+    layx_append(&ctx, container, item1);
 
     layx_id item2 = layx_item(&ctx);
     layx_set_size(&ctx, item2, 100, 60);
-    layx_insert(&ctx, container, item2);
+    layx_append(&ctx, container, item2);
 
     layx_id item3 = layx_item(&ctx);
     layx_set_size(&ctx, item3, 60, 60);
-    layx_insert(&ctx, container, item3);
+    layx_append(&ctx, container, item3);
 
     // Run layout
     layx_run_context(&ctx);
@@ -103,15 +103,15 @@ void test_vertical_layout() {
     // Create 3 items
     layx_id item1 = layx_item(&ctx);
     layx_set_size(&ctx, item1, 60, 80);
-    layx_insert(&ctx, container, item1);
+    layx_append(&ctx, container, item1);
 
     layx_id item2 = layx_item(&ctx);
     layx_set_size(&ctx, item2, 60, 100);
-    layx_insert(&ctx, container, item2);
+    layx_append(&ctx, container, item2);
 
     layx_id item3 = layx_item(&ctx);
     layx_set_size(&ctx, item3, 60, 60);
-    layx_insert(&ctx, container, item3);
+    layx_append(&ctx, container, item3);
 
     // Run layout
     layx_run_context(&ctx);
@@ -157,7 +157,7 @@ void test_justify_content() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -181,7 +181,7 @@ void test_justify_content() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -204,7 +204,7 @@ void test_justify_content() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -234,34 +234,34 @@ void test_sidebar_layout() {
     layx_set_size(&ctx, sidebar, 200, 0);
     layx_set_display(&ctx, sidebar, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, sidebar, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_insert(&ctx, root, sidebar);
+    layx_append(&ctx, root, sidebar);
 
     // Sidebar items
     layx_id sidebar_item1 = layx_item(&ctx);
     layx_set_size(&ctx, sidebar_item1, 0, 50);
     layx_set_margin_trbl(&ctx, sidebar_item1, 0, 0, 10, 0);
-    layx_insert(&ctx, sidebar, sidebar_item1);
+    layx_append(&ctx, sidebar, sidebar_item1);
 
     layx_id sidebar_item2 = layx_item(&ctx);
     layx_set_size(&ctx, sidebar_item2, 0, 50);
     layx_set_margin_trbl(&ctx, sidebar_item2, 0, 0, 10, 0);
-    layx_insert(&ctx, sidebar, sidebar_item2);
+    layx_append(&ctx, sidebar, sidebar_item2);
 
     // Main content
     layx_id main_content = layx_item(&ctx);
     layx_set_display(&ctx, main_content, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, main_content, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_insert(&ctx, root, main_content);
+    layx_append(&ctx, root, main_content);
 
     // Header
     layx_id header = layx_item(&ctx);
     layx_set_size(&ctx, header, 0, 60);
-    layx_insert(&ctx, main_content, header);
+    layx_append(&ctx, main_content, header);
 
     // Content body
     layx_id body = layx_item(&ctx);
     layx_set_size(&ctx, body, 0, 400);
-    layx_insert(&ctx, main_content, body);
+    layx_append(&ctx, main_content, body);
 
     layx_run_context(&ctx);
 
@@ -297,28 +297,28 @@ void test_navbar_layout() {
     // Logo
     layx_id logo = layx_item(&ctx);
     layx_set_size(&ctx, logo, 100, 40);
-    layx_insert(&ctx, navbar, logo);
+    layx_append(&ctx, navbar, logo);
 
     // Links container
     layx_id links = layx_item(&ctx);
     layx_set_display(&ctx, links, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, links, LAYX_FLEX_DIRECTION_ROW);
-    layx_insert(&ctx, navbar, links);
+    layx_append(&ctx, navbar, links);
 
     // Nav links
     layx_id link1 = layx_item(&ctx);
     layx_set_size(&ctx, link1, 80, 40);
     layx_set_margin_trbl(&ctx, link1, 0, 10, 0, 0);
-    layx_insert(&ctx, links, link1);
+    layx_append(&ctx, links, link1);
 
     layx_id link2 = layx_item(&ctx);
     layx_set_size(&ctx, link2, 80, 40);
     layx_set_margin_trbl(&ctx, link2, 0, 10, 0, 0);
-    layx_insert(&ctx, links, link2);
+    layx_append(&ctx, links, link2);
 
     layx_id link3 = layx_item(&ctx);
     layx_set_size(&ctx, link3, 80, 40);
-    layx_insert(&ctx, links, link3);
+    layx_append(&ctx, links, link3);
 
     layx_run_context(&ctx);
 
@@ -358,21 +358,21 @@ void test_card_grid_layout() {
     layx_set_size(&ctx, row1, 0, 120);
     layx_set_display(&ctx, row1, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, row1, LAYX_FLEX_DIRECTION_ROW);
-    layx_insert(&ctx, container, row1);
+    layx_append(&ctx, container, row1);
 
     layx_id card1 = layx_item(&ctx);
     layx_set_size(&ctx, card1, 100, 100);
     layx_set_margin_trbl(&ctx, card1, 0, 10, 0, 0);
-    layx_insert(&ctx, row1, card1);
+    layx_append(&ctx, row1, card1);
 
     layx_id card2 = layx_item(&ctx);
     layx_set_size(&ctx, card2, 100, 100);
     layx_set_margin_trbl(&ctx, card2, 0, 10, 0, 0);
-    layx_insert(&ctx, row1, card2);
+    layx_append(&ctx, row1, card2);
 
     layx_id card3 = layx_item(&ctx);
     layx_set_size(&ctx, card3, 100, 100);
-    layx_insert(&ctx, row1, card3);
+    layx_append(&ctx, row1, card3);
 
     // Row 2
     layx_id row2 = layx_item(&ctx);
@@ -380,21 +380,21 @@ void test_card_grid_layout() {
     layx_set_display(&ctx, row2, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, row2, LAYX_FLEX_DIRECTION_ROW);
     layx_set_margin_trbl(&ctx, row2, 10, 0, 0, 0);
-    layx_insert(&ctx, container, row2);
+    layx_append(&ctx, container, row2);
 
     layx_id card4 = layx_item(&ctx);
     layx_set_size(&ctx, card4, 100, 100);
     layx_set_margin_trbl(&ctx, card4, 0, 10, 0, 0);
-    layx_insert(&ctx, row2, card4);
+    layx_append(&ctx, row2, card4);
 
     layx_id card5 = layx_item(&ctx);
     layx_set_size(&ctx, card5, 100, 100);
     layx_set_margin_trbl(&ctx, card5, 0, 10, 0, 0);
-    layx_insert(&ctx, row2, card5);
+    layx_append(&ctx, row2, card5);
 
     layx_id card6 = layx_item(&ctx);
     layx_set_size(&ctx, card6, 100, 100);
-    layx_insert(&ctx, row2, card6);
+    layx_append(&ctx, row2, card6);
 
     layx_run_context(&ctx);
 
@@ -434,14 +434,14 @@ void test_form_layout() {
         layx_id field = layx_item(&ctx);
         layx_set_size(&ctx, field, 360, 40);
         layx_set_margin_trbl(&ctx, field, 0, 0, 10, 0);
-        layx_insert(&ctx, form, field);
+        layx_append(&ctx, form, field);
     }
 
     // Submit button
     layx_id button = layx_item(&ctx);
     layx_set_size(&ctx, button, 100, 40);
     layx_set_margin_trbl(&ctx, button, 10, 0, 0, 0);
-    layx_insert(&ctx, form, button);
+    layx_append(&ctx, form, button);
 
     layx_run_context(&ctx);
 
@@ -474,7 +474,7 @@ void test_margin_and_padding() {
     layx_id item = layx_item(&ctx);
     layx_set_size(&ctx, item, 100, 50);
     layx_set_margin_trbl(&ctx, item, 10, 20, 10, 20);
-    layx_insert(&ctx, container, item);
+    layx_append(&ctx, container, item);
 
     layx_run_context(&ctx);
 
@@ -509,14 +509,14 @@ void test_nested_layouts() {
     layx_set_size(&ctx, left, 200, 0);
     layx_set_display(&ctx, left, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, left, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_insert(&ctx, outer, left);
+    layx_append(&ctx, outer, left);
 
     // Items in left panel
     for (int i = 0; i < 3; i++) {
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 150, 50);
         layx_set_margin_trbl(&ctx, item, 0, 0, 10, 0);
-        layx_insert(&ctx, left, item);
+        layx_append(&ctx, left, item);
     }
 
     // Right panel (column)
@@ -524,14 +524,14 @@ void test_nested_layouts() {
     layx_set_size(&ctx, right, 0, 0);
     layx_set_display(&ctx, right, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, right, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_insert(&ctx, outer, right);
+    layx_append(&ctx, outer, right);
 
     // Items in right panel
     for (int i = 0; i < 4; i++) {
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 150, 40);
         layx_set_margin_trbl(&ctx, item, 0, 0, 8, 0);
-        layx_insert(&ctx, right, item);
+        layx_append(&ctx, right, item);
     }
 
     layx_run_context(&ctx);
@@ -566,13 +566,13 @@ void test_flex_grow_shrink() {
     // Fixed width item
     layx_id item1 = layx_item(&ctx);
     layx_set_size(&ctx, item1, 100, 80);
-    layx_insert(&ctx, container, item1);
+    layx_append(&ctx, container, item1);
 
     // Flexible item (flex-grow: 1)
     layx_id item2 = layx_item(&ctx);
     layx_set_size(&ctx, item2, 0, 80);
     layx_set_flex_grow(&ctx, item2, 1);
-    layx_insert(&ctx, container, item2);
+    layx_append(&ctx, container, item2);
 
     layx_run_context(&ctx);
 
@@ -607,7 +607,7 @@ void test_align_items() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -630,7 +630,7 @@ void test_align_items() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -653,7 +653,7 @@ void test_align_items() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -681,11 +681,11 @@ void test_space_distribution() {
 
         layx_id item1 = layx_item(&ctx);
         layx_set_size(&ctx, item1, 50, 50);
-        layx_insert(&ctx, container, item1);
+        layx_append(&ctx, container, item1);
 
         layx_id item2 = layx_item(&ctx);
         layx_set_size(&ctx, item2, 50, 50);
-        layx_insert(&ctx, container, item2);
+        layx_append(&ctx, container, item2);
 
         layx_run_context(&ctx);
         layx_vec4 rect1 = layx_get_rect(&ctx, item1);
@@ -712,7 +712,7 @@ void test_space_distribution() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -736,7 +736,7 @@ void test_space_distribution() {
 
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 50, 50);
-        layx_insert(&ctx, container, item);
+        layx_append(&ctx, container, item);
 
         layx_run_context(&ctx);
         layx_vec4 rect = layx_get_rect(&ctx, item);
@@ -765,14 +765,14 @@ static void test_min_max_size_layout(void) {
     layx_set_min_width(&ctx, item1, 300);
     layx_set_width(&ctx, item1, 50); // 故意设很小
     layx_set_height(&ctx, item1, 50);
-    layx_push(&ctx, container, item1);
+    layx_prepend(&ctx, container, item1);
 
     // 子项 2：max_width = 50，应该被限制在 50
     layx_id item2 = layx_item(&ctx);
     layx_set_max_width(&ctx, item2, 50);
     layx_set_width(&ctx, item2, 100); // 故意设很大
     layx_set_height(&ctx, item2, 50);
-    layx_push(&ctx, container, item2);
+    layx_prepend(&ctx, container, item2);
 
     layx_run_context(&ctx);
 

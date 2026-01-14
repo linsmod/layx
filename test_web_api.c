@@ -69,7 +69,7 @@ int main() {
         layx_set_width(&ctx, child, 350);
         layx_set_height(&ctx, child, 100);
         layx_set_margin(&ctx, child, 10);
-        layx_push(&ctx, container1, child);
+        layx_prepend(&ctx, container1, child);
     }
 
     // 测试2: 水平滚动
@@ -82,7 +82,7 @@ int main() {
     layx_id wide_child = layx_item(&ctx);
     layx_set_width(&ctx, wide_child, 500);
     layx_set_height(&ctx, wide_child, 100);
-    layx_push(&ctx, container2, wide_child);
+    layx_prepend(&ctx, container2, wide_child);
 
     // 测试3: 无滚动条
     layx_id container3 = layx_item(&ctx);
@@ -93,7 +93,7 @@ int main() {
     layx_id small_child = layx_item(&ctx);
     layx_set_width(&ctx, small_child, 100);
     layx_set_height(&ctx, small_child, 50);
-    layx_push(&ctx, container3, small_child);
+    layx_prepend(&ctx, container3, small_child);
 
     // 运行布局
     layx_run_context(&ctx);

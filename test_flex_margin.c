@@ -46,17 +46,17 @@ void test_flex_column_vertical_stacking(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child3);
+    layx_append(&ctx, container, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -108,13 +108,13 @@ void test_flex_column_margin_accumulation(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 20, 0, 0, 0);  // 上边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -163,19 +163,19 @@ void test_flex_column_multiple_margins(void) {
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_margin_trbl(&ctx, child1, 10, 0, 15, 0);  // 上10，下15
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 20, 0, 10, 0);  // 上20，下10
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
     layx_set_margin_trbl(&ctx, child3, 15, 0, 5, 0);   // 上15，下5
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child3);
+    layx_append(&ctx, container, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -232,17 +232,17 @@ void test_flex_row_horizontal_stacking(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 50, 30);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 50, 30);
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 50, 30);
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child3);
+    layx_append(&ctx, container, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -293,13 +293,13 @@ void test_flex_row_margin_accumulation(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 50, 30);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 50, 30);
     layx_set_margin_trbl(&ctx, child2, 0, 0, 0, 20);  // 左边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -347,18 +347,18 @@ void test_flex_column_container_height(void) {
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_margin_trbl(&ctx, child1, 0, 0, 20, 0);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 0, 0, 20, 0);
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child2);
+    layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child3);
+    layx_append(&ctx, container, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -414,7 +414,7 @@ void test_flex_all_margins(void) {
     layx_set_size(&ctx, child, 100, 50);
     layx_set_margin_trbl(&ctx, child, 15, 25, 20, 30);  // 上15，右25，下20，左30
     layx_set_flex_shrink(&ctx, child, 0);  // 不允许收缩
-    layx_insert(&ctx, container, child);
+    layx_append(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);

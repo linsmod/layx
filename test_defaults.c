@@ -410,7 +410,7 @@ void test_alignment_defaults(void) {
     layx_set_display(&ctx, container, LAYX_DISPLAY_FLEX);
     
     layx_id item = layx_item(&ctx);
-    layx_insert(&ctx, container, item);
+    layx_append(&ctx, container, item);
     
     layx_item_t *pcontainer = layx_get_item(&ctx, container);
     layx_item_t *pitem = layx_get_item(&ctx, item);
@@ -457,14 +457,14 @@ void test_complete_defaults(void) {
     layx_set_display(&ctx, root, LAYX_DISPLAY_FLEX);
     
     layx_id container = layx_item(&ctx);
-    layx_insert(&ctx, root, container);
+    layx_append(&ctx, root, container);
     
     layx_id item1 = layx_item(&ctx);
     layx_set_size(&ctx, item1, 100, 100);
-    layx_insert(&ctx, container, item1);
+    layx_append(&ctx, container, item1);
     
     layx_id item2 = layx_item(&ctx);
-    layx_insert(&ctx, container, item2);
+    layx_append(&ctx, container, item2);
     
     // 运行布局
     layx_run_context(&ctx);
@@ -536,8 +536,8 @@ static void test_getter_functions(void) {
     root = layx_item(&ctx);
     container = layx_item(&ctx);
     item = layx_item(&ctx);
-    layx_push(&ctx, root, container);
-    layx_push(&ctx, container, item);
+    layx_prepend(&ctx, root, container);
+    layx_prepend(&ctx, container, item);
     
     // 测试默认值为0
     layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);

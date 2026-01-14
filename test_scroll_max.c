@@ -55,7 +55,7 @@ void test_scroll_max_no_overflow(void) {
     // 创建子项，内容不溢出容器
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -94,7 +94,7 @@ void test_scroll_max_with_overflow(void) {
     // 创建宽度超出容器的子项
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -133,7 +133,7 @@ void test_scroll_max_with_padding(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -171,7 +171,7 @@ void test_scroll_max_with_border(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -208,7 +208,7 @@ void test_scroll_max_with_padding_and_border(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -243,7 +243,7 @@ void test_scroll_max_dynamic_content(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 100);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -282,7 +282,7 @@ void test_scroll_max_overflow_hidden(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -313,7 +313,7 @@ void test_scroll_max_overflow_visible(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 300);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -347,22 +347,22 @@ void test_scroll_max_multiple_children(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_flex_shrink(&ctx, child1, 0);  // 防止压缩
-    layx_push(&ctx, container, child1);
+    layx_prepend(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_flex_shrink(&ctx, child2, 0);  // 防止压缩
-    layx_push(&ctx, container, child2);
+    layx_prepend(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 100);
     layx_set_flex_shrink(&ctx, child3, 0);  // 防止压缩
-    layx_push(&ctx, container, child3);
+    layx_prepend(&ctx, container, child3);
 
     layx_id child4 = layx_item(&ctx);
     layx_set_size(&ctx, child4, 100, 50);
     layx_set_flex_shrink(&ctx, child4, 0);  // 防止压缩
-    layx_push(&ctx, container, child4);
+    layx_prepend(&ctx, container, child4);
 
     layx_run_context(&ctx);
 
@@ -428,22 +428,22 @@ void test_scroll_max_multiple_children_with_shrink(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_min_size(&ctx, child1, 100, 40);  // 最小高度40px
-    layx_push(&ctx, container, child1);
+    layx_prepend(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_min_size(&ctx, child2, 100, 40);  // 最小高度40px
-    layx_push(&ctx, container, child2);
+    layx_prepend(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 100);
     layx_set_min_size(&ctx, child3, 100, 80);  // 最小高度80px（受保护）
-    layx_push(&ctx, container, child3);
+    layx_prepend(&ctx, container, child3);
 
     layx_id child4 = layx_item(&ctx);
     layx_set_size(&ctx, child4, 100, 50);
     layx_set_min_size(&ctx, child4, 100, 40);  // 最小高度40px
-    layx_push(&ctx, container, child4);
+    layx_prepend(&ctx, container, child4);
 
     layx_run_context(&ctx);
 
@@ -512,12 +512,12 @@ void test_scroll_max_nested_containers(void) {
     layx_id inner = layx_item(&ctx);
     layx_set_size(&ctx, inner, 500, 200);
     layx_set_overflow(&ctx, inner, LAYX_OVERFLOW_AUTO);
-    layx_push(&ctx, outer, inner);
+    layx_prepend(&ctx, outer, inner);
 
     // 内容项
     layx_id content = layx_item(&ctx);
     layx_set_size(&ctx, content, 800, 600);
-    layx_push(&ctx, inner, content);
+    layx_prepend(&ctx, inner, content);
 
     layx_run_context(&ctx);
 
@@ -557,7 +557,7 @@ void test_scroll_max_content_size_relation(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 200);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -624,7 +624,7 @@ void test_scroll_max_exact_match(void) {
     // 创建正好匹配容器的子项
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 200, 150);
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -654,7 +654,7 @@ void test_scroll_max_horizontal_only(void) {
 
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 300, 100);  // 宽度超出，高度不超出
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -686,7 +686,7 @@ void test_scroll_max_vertical_only(void) {
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 200);  // 宽度不超出，高度超出
     layx_set_flex_shrink(&ctx, child, 0);  // 防止压缩
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 
@@ -747,7 +747,7 @@ void test_scroll_max_vertical_only_with_shrink(void) {
     layx_set_size(&ctx, child, 100, 200);  // 宽度不超出，高度超出容器50px
     layx_set_min_size(&ctx, child, 100, 180);  // 设置min-height:180px，限制压缩下限
     // 注意：未显式设置flex-shrink，使用默认值1（会被压缩）
-    layx_push(&ctx, container, child);
+    layx_prepend(&ctx, container, child);
 
     layx_run_context(&ctx);
 

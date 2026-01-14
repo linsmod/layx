@@ -44,15 +44,15 @@ void test_block_vertical_stacking(void) {
     // 创建3个子元素，每个高度50，垂直排列
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_insert(&ctx, container, child2);
+    layx_insert_after(&ctx, child1, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
-    layx_insert(&ctx, container, child3);
+    layx_insert_after(&ctx, child2, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -96,12 +96,12 @@ void test_block_margin_accumulation(void) {
     // 创建2个子元素，第二个有上边距
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 20, 0, 0, 0);  // 上边距20
-    layx_insert(&ctx, container, child2);
+    layx_insert_after(&ctx, child1, child2);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -145,17 +145,17 @@ void test_block_multiple_margins(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_margin_trbl(&ctx, child1, 10, 0, 15, 0);  // 上10，下15
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 20, 0, 10, 0);  // 上20，下10
-    layx_insert(&ctx, container, child2);
+    layx_insert_after(&ctx, child1, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
     layx_set_margin_trbl(&ctx, child3, 15, 0, 5, 0);   // 上15，下5
-    layx_insert(&ctx, container, child3);
+    layx_insert_after(&ctx, child2, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -211,16 +211,16 @@ void test_block_container_height(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
     layx_set_margin_trbl(&ctx, child1, 0, 0, 20, 0);
-    layx_insert(&ctx, container, child1);
+    layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
     layx_set_margin_trbl(&ctx, child2, 0, 0, 20, 0);
-    layx_insert(&ctx, container, child2);
+    layx_insert_after(&ctx, child1, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
-    layx_insert(&ctx, container, child3);
+    layx_insert_after(&ctx, child2, child3);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -264,7 +264,7 @@ void test_block_horizontal_alignment(void) {
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 50);
     layx_set_margin_trbl(&ctx, child, 0, 0, 0, 0);
-    layx_insert(&ctx, container, child);
+    layx_append(&ctx, container, child);
 
     // 运行布局
     layx_run_context(&ctx);
@@ -312,20 +312,20 @@ void test_block_vs_flex_comparison(void) {
     layx_id block_child1 = layx_item(&ctx);
     layx_set_size(&ctx, block_child1, 100, 50);
     layx_set_margin_trbl(&ctx, block_child1, 0, 0, 20, 0);
-    layx_insert(&ctx, block_container, block_child1);
+    layx_append(&ctx, block_container, block_child1);
 
     layx_id block_child2 = layx_item(&ctx);
     layx_set_size(&ctx, block_child2, 100, 50);
-    layx_insert(&ctx, block_container, block_child2);
+    layx_append(&ctx, block_container, block_child2);
 
     layx_id flex_child1 = layx_item(&ctx);
     layx_set_size(&ctx, flex_child1, 100, 50);
     layx_set_margin_trbl(&ctx, flex_child1, 0, 0, 20, 0);
-    layx_insert(&ctx, flex_container, flex_child1);
+    layx_append(&ctx, flex_container, flex_child1);
 
     layx_id flex_child2 = layx_item(&ctx);
     layx_set_size(&ctx, flex_child2, 100, 50);
-    layx_insert(&ctx, flex_container, flex_child2);
+    layx_append(&ctx, flex_container, flex_child2);
 
     // 运行布局
     layx_run_context(&ctx);
