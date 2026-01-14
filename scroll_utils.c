@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdio.h>
 
+// 简单的 MAX 宏
+#define LAYX_MAX(a, b) ((a) > (b) ? (a) : (b))
+
 // 初始化项目的滚动相关字段
 void layx_init_scroll_fields(layx_context *ctx, layx_id item) {
     LAYX_ASSERT(ctx != NULL && item != LAYX_INVALID_ID);
@@ -70,12 +73,16 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
                        (direction == LAYX_FLEX_DIRECTION_ROW ||
                         direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
     
+    // BLOCK布局在垂直方向堆叠子项，类似于flex column
+    int is_block_stacked = (model == 0);
+    
     // 有子项时，计算所有子项的边界框（相对于内容区域）
     layx_scalar max_content_width = 0.0f;
     layx_scalar max_content_height = 0.0f;
     layx_scalar stacked_content_height = 0.0f;  // 用于累加column布局的高度
     layx_scalar stacked_content_width = 0.0f;   // 用于累加row布局的宽度
     layx_id child = pitem->first_child;
+    layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，用于累加相邻边距
     
     while (child != LAYX_INVALID_ID) {
         layx_vec4 child_rect = layx_get_rect(ctx, child);
@@ -99,16 +106,45 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
         if (child_relative_width > max_content_width) max_content_width = child_relative_width;
         if (child_relative_height > max_content_height) max_content_height = child_relative_height;
         
-        // 对于column布局，累加子项高度（包括margin）
-        if (is_flex_column) {
-            stacked_content_height += child_height + pchild->margins[1] + pchild->margins[3];
+        // 对于column布局或BLOCK布局，累加子项高度（正确处理margin）
+        if (is_flex_column || is_block_stacked) {
+            if (prev_child == LAYX_INVALID_ID) {
+                // 第一个子项：累加其 margin-top
+                stacked_content_height += pchild->margins[1];
+            } else {
+                // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+                layx_item_t *pprev = layx_get_item(ctx, prev_child);
+                layx_scalar gap = LAYX_MAX(pprev->margins[3], pchild->margins[1]);
+                stacked_content_height += gap;
+            }
+            // 累加子项高度
+            stacked_content_height += child_height;
+            // 如果是最后一个子项，累加其 margin-bottom
+            if (pchild->next_sibling == LAYX_INVALID_ID) {
+                stacked_content_height += pchild->margins[3];
+            }
         }
         
-        // 对于row布局，累加子项宽度（包括margin）
+        // 对于row布局，累加子项宽度（正确处理margin）
         if (is_flex_row) {
-            stacked_content_width += child_width + pchild->margins[0] + pchild->margins[2];
+            if (prev_child == LAYX_INVALID_ID) {
+                // 第一个子项：累加其 margin-left
+                stacked_content_width += pchild->margins[0];
+            } else {
+                // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+                layx_item_t *pprev = layx_get_item(ctx, prev_child);
+                layx_scalar gap = LAYX_MAX(pprev->margins[2], pchild->margins[0]);
+                stacked_content_width += gap;
+            }
+            // 累加子项宽度
+            stacked_content_width += child_width;
+            // 如果是最后一个子项，累加其 margin-right
+            if (pchild->next_sibling == LAYX_INVALID_ID) {
+                stacked_content_width += pchild->margins[2];
+            }
         }
         
+        prev_child = child;
         child = layx_next_sibling(ctx, child);
     }
     
@@ -120,15 +156,12 @@ void layx_calculate_content_size(layx_context *ctx, layx_id item) {
                                  pitem->padding[1] - pitem->padding[3] -
                                  pitem->border[1] - pitem->border[3];
     
-    // 对于column布局，使用累加的高度；对于row布局，使用累加的宽度
-    if (is_flex_column) {
+    // 对于column布局或BLOCK布局（垂直堆叠），使用累加的高度；对于row布局，使用累加的宽度
+    if (is_flex_column || is_block_stacked) {
         pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
         pitem->content_size[1] = (stacked_content_height > client_height) ? stacked_content_height : client_height;
     } else if (is_flex_row) {
         pitem->content_size[0] = (stacked_content_width > client_width) ? stacked_content_width : client_width;
-        pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
-    } else {
-        pitem->content_size[0] = (max_content_width > client_width) ? max_content_width : client_width;
         pitem->content_size[1] = (max_content_height > client_height) ? max_content_height : client_height;
     }
 }

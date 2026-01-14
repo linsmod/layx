@@ -1048,6 +1048,8 @@ void layx_arrange_stacked(
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     const uint32_t item_flags = pitem->flags;
+    uint32_t model = item_flags & LAYX_LAYOUT_MODEL_MASK;
+    int is_flex_container = (model != 0);  // 只在 flex 容器中应用 flex-shrink
     layx_scalar space = layx_get_internal_space(ctx, item, dim);
     layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
 
@@ -1073,7 +1075,8 @@ void layx_arrange_stacked(
             layx_vec4 child_rect = ctx->rects[child];
             
             // Check if item has flex-grow (should fill remaining space)
-            int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
+            // flex-grow 和 flex-shrink 只在 flex 容器中生效
+            int has_flex_grow = is_flex_container && (pchild->flex_grow > 0);
             
             layx_scalar extend = used;
             if (has_flex_grow) {
@@ -1083,7 +1086,8 @@ void layx_arrange_stacked(
                 extend += child_rect[dim] + child_rect[2 + dim] + child_margins[wdim];
                 
                 // 计算flex-shrink权重（如果flex_shrink > 0，则参与压缩）
-                if (pchild->flex_shrink > 0.0f) {
+                // 只在 flex 容器中生效
+                if (is_flex_container && pchild->flex_shrink > 0.0f) {
                     total_shrink_factor += pchild->flex_shrink;
                 }
             }
@@ -1106,9 +1110,10 @@ void layx_arrange_stacked(
         float extra_margin = 0.0f;
 
         if (extra_space > 0) {
-            if (count > 0)
+            // flex-grow 和 justify-content 只在 flex 容器中生效
+            if (is_flex_container && count > 0)
                 filler = (float)extra_space / (float)count;
-            else if (total > 0) {
+            else if (is_flex_container && total > 0) {
                 layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
                 switch (justify) {
                 case LAYX_JUSTIFY_SPACE_BETWEEN:
@@ -1210,10 +1215,8 @@ void layx_arrange_stacked(
                                 pchild->border[dim] + pchild->border[wdim];
                 
                 // 如果空间不足且总shrink权重>0，根据flex-shrink进行压缩
-                // 注意：如果子项在当前维度有固定尺寸，则不应该被压缩
-                // 修复：只依赖flex_shrink决定是否压缩，移除SIZE_FIXED检查
-                // 这样更符合CSS规范：flex-shrink > 0的子项可以被压缩，即使设置了height
-                if (extra_space < 0 && total_shrink_factor > 0.0f && pchild->flex_shrink > 0.0f) {
+                // 重要：flex-shrink 只在 flex 容器中生效，BLOCK 容器不压缩子项
+                if (is_flex_container && extra_space < 0 && total_shrink_factor > 0.0f && pchild->flex_shrink > 0.0f) {
                     // 计算该元素的压缩比例：该元素的flex_shrink / 总flex_shrink
                     float shrink_ratio = pchild->flex_shrink / total_shrink_factor;
                     // 该元素需要压缩的总量：总不足空间 * 压缩比例
