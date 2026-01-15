@@ -591,17 +591,17 @@ int main(void) {
     
     // 输出测试结果
     printf("\n===========================================\n");
-    printf("           测试总结\n");
+    printf("           Test Summary\n");
     printf("===========================================\n");
-    printf("通过测试: %d\n", tests_passed);
-    printf("失败测试: %d\n", tests_failed);
-    printf("总测试数: %d\n", tests_passed + tests_failed);
+    printf("Tests Passed: %d\n", tests_passed);
+    printf("Tests Failed: %d\n", tests_failed);
+    printf("Total Tests: %d\n", tests_passed + tests_failed);
     printf("===========================================\n");
     
     if (tests_failed == 0) {
-        printf("✓ 所有测试通过！\n");
+        printf("✓ All tests passed!\n");
     } else {
-        printf("✗ 有测试失败！\n");
+        printf("✗ Some tests failed!\n");
     }
     
     return 0;

@@ -510,35 +510,30 @@ LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id root_id, l
     }
     
     // 4. 处理滚动偏移 - 正确顺序：从最外层滚动容器到当前元素
-    // 收集所有滚动祖先
-    layx_item_t *scroll_ancestors[32]; // 假设最多32层嵌套
+    // 收集所有滚动祖先的ID
+    layx_id scroll_ancestor_ids[32]; // 假设最多32层嵌套
     int depth = 0;
-    layx_item_t *current = item;
+    layx_id current_id = root_id;
     
-    while (current && depth < 32) {
+    while (current_id != LAYX_INVALID_ID && current_id < ctx->count && depth < 32) {
+        layx_item_t *current = layx_get_item(ctx, current_id);
+        if (!current) break;
+        
         if (layx_is_scrollable(current)) {
-            scroll_ancestors[depth++] = current;
+            scroll_ancestor_ids[depth++] = current_id;
         }
-        // 检查 parent ID 是否有效，避免访问无效元素
-        if (current->parent == LAYX_INVALID_ID || current->parent >= ctx->count) {
-            break;
-        }
-        current = layx_get_item(ctx, current->parent);
+        // 移动到父元素
+        current_id = current->parent;
     }
     
     // 应用滚动偏移（从最外层到最内层）
     for (int i = depth - 1; i >= 0; i--) {
-        test_x -= scroll_ancestors[i]->scroll_offset[0];
-        test_y -= scroll_ancestors[i]->scroll_offset[1];
+        layx_id ancestor_id = scroll_ancestor_ids[i];
+        layx_item_t *ancestor = layx_get_item(ctx, ancestor_id);
+        if (!ancestor) break;
         
-        // 可选：检查是否在滚动容器的可见区域内
-        // 如果要严格匹配滚动裁剪，可以取消注释下面的代码
-        /*
-        layx_vec4 scroll_rect = ctx->rects[scroll_ancestors[i]->id];
-        if (!layx_point_in_rect(test_x, test_y, scroll_rect)) {
-            return 0; // 点在滚动容器可见区域外
-        }
-        */
+        test_x -= ancestor->scroll_offset[0];
+        test_y -= ancestor->scroll_offset[1];
     }
     
     // 5. 检查点是否在元素边界框内

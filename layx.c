@@ -88,6 +88,7 @@ void layx_init_context(layx_context *ctx)
     ctx->count = 0;
     ctx->items = NULL;
     ctx->rects = NULL;
+    ctx->screen_to_local_fn = NULL;
 }
 
 void layx_reserve_items_capacity(layx_context *ctx, layx_id count)
@@ -893,11 +894,32 @@ layx_scalar layx_calc_stacked_size(
     layx_item_t *LAYX_RESTRICT pitem = layx_get_item(ctx, item);
     layx_scalar need_size = 0;
     layx_id child = pitem->first_child;
+    layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
+
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
-        need_size += rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
+        
+        // 正确处理margin合并：相邻margin取最大值，而不是简单叠加
+        if (prev_child == LAYX_INVALID_ID) {
+            // 第一个子项：累加其起始margin
+            need_size += pchild->margins[dim];
+        } else {
+            // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+            layx_item_t *pprev = layx_get_item(ctx, prev_child);
+            layx_scalar gap = layx_scalar_max(pprev->margins[wdim], pchild->margins[dim]);
+            need_size += gap;
+        }
+        
+        // 累加子项尺寸
+        need_size += rect[2 + dim];
+        
+        // 如果是最后一个子项，累加其结束margin
+        if (pchild->next_sibling == LAYX_INVALID_ID) {
+            need_size += pchild->margins[wdim];
+        }
+        
+        prev_child = child;
         child = pchild->next_sibling;
     }
     return need_size;
@@ -938,15 +960,39 @@ layx_scalar layx_calc_wrapped_stacked_size(
     layx_scalar need_size = 0;
     layx_scalar need_size2 = 0;
     layx_id child = pitem->first_child;
+    layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
+
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
+        
         if (pchild->flags & LAYX_BREAK) {
             need_size2 = layx_scalar_max(need_size2, need_size);
             need_size = 0;
+            prev_child = LAYX_INVALID_ID;  // 换行后重置prev_child
         }
-        // 只使用子元素的尺寸，不使用位置（位置在 arrange 阶段设置）
-        need_size += rect[2 + dim] + pchild->margins[dim] + pchild->margins[wdim];
+        
+        // 正确处理margin合并：相邻margin取最大值，而不是简单叠加
+        if (prev_child == LAYX_INVALID_ID) {
+            // 第一个子项（或换行后的第一个）：累加其起始margin
+            need_size += pchild->margins[dim];
+        } else {
+            // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+            layx_item_t *pprev = layx_get_item(ctx, prev_child);
+            layx_scalar gap = layx_scalar_max(pprev->margins[wdim], pchild->margins[dim]);
+            need_size += gap;
+        }
+        
+        // 累加子项尺寸
+        need_size += rect[2 + dim];
+        
+        // 如果是最后一个子项或换行前的最后一个子项，累加其结束margin
+        if (pchild->next_sibling == LAYX_INVALID_ID || 
+            (layx_get_item(ctx, pchild->next_sibling)->flags & LAYX_BREAK)) {
+            need_size += pchild->margins[wdim];
+        }
+        
+        prev_child = child;
         child = pchild->next_sibling;
     }
     return layx_scalar_max(need_size2, need_size);
@@ -1494,36 +1540,65 @@ static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
 static void layx_arrange_inline(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    
+
     // INLINE 元素的宽度由内容决定，不支持 flex 属性
     // 子元素在一行内排列，如果超出宽度则换行
     if (dim == 0) {
         // X 轴（水平方向）：子元素从左到右排列
         const layx_scalar offset = layx_get_content_offset(ctx, item, 0);
         const layx_scalar space = layx_get_internal_space(ctx, item, 0);
-        
+
         float x = (float)offset;
         float line_start = x;
         float max_line_width = 0.0f;
-        
+        layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
+
         layx_id child = pitem->first_child;
         while (child != LAYX_INVALID_ID) {
             layx_item_t *pchild = layx_get_item(ctx, child);
             layx_vec4 child_rect = ctx->rects[child];
             const layx_vec4 child_margins = pchild->margins;
-            
-            float child_width = (float)child_rect[2] + (float)child_margins[0] + (float)child_margins[2];
-            
-            // 检查是否需要换行
-            if (x + child_width > offset + space && x > line_start) {
-                x = (float)offset;  // 换行
+
+            // 计算子元素的占用宽度（包含margin）
+            float child_content_width = (float)child_rect[2];
+
+            // 正确处理margin合并：第一个元素或换行后的第一个元素使用左margin
+            float margin_left = 0.0f;
+            float margin_right = 0.0f;
+
+            if (prev_child == LAYX_INVALID_ID) {
+                // 第一个子项（或换行后的第一个）：使用完整的左margin
+                margin_left = (float)child_margins[0];
+            } else {
+                // 非第一个子项：与上一个子项之间的边距取最大值
+                layx_item_t *pprev = layx_get_item(ctx, prev_child);
+                margin_left = layx_float_max((float)pprev->margins[2], (float)child_margins[0]);
             }
-            
-            child_rect[0] = (layx_scalar)x;
-            x += child_width;
+
+            // 如果是最后一个子项，使用完整的右margin
+            layx_id next_child = pchild->next_sibling;
+            if (next_child == LAYX_INVALID_ID || (layx_get_item(ctx, next_child)->flags & LAYX_BREAK)) {
+                margin_right = (float)child_margins[2];
+            }
+
+            float child_total_width = child_content_width + margin_left + margin_right;
+
+            // 检查是否需要换行
+            if (x + child_total_width > offset + space && x > line_start) {
+                x = (float)offset;  // 换行
+                prev_child = LAYX_INVALID_ID;  // 换行后重置prev_child，重新计算margin
+                // 换行后，当前元素成为新行的第一个元素，需要使用完整的左margin
+                margin_left = (float)child_margins[0];
+                child_total_width = child_content_width + margin_left + margin_right;
+            }
+
+            // 设置子元素位置
+            child_rect[0] = (layx_scalar)(x + margin_left);
+            x += child_total_width;
             max_line_width = layx_float_max(max_line_width, x - offset);
-            
+
             ctx->rects[child] = child_rect;
+            prev_child = child;
             child = pchild->next_sibling;
         }
     } else {
@@ -1537,35 +1612,64 @@ static void layx_arrange_inline(layx_context *ctx, layx_id item, int dim)
 static void layx_arrange_inline_block(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    
+
     // INLINE_BLOCK 元素在一行内排列，支持设置宽高
     if (dim == 0) {
         // X 轴（水平方向）：子元素从左到右排列
         const layx_scalar offset = layx_get_content_offset(ctx, item, 0);
         const layx_scalar space = layx_get_internal_space(ctx, item, 0);
-        
+
         float x = (float)offset;
         float line_start = x;
         float max_line_width = 0.0f;
-        
+        layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
+
         layx_id child = pitem->first_child;
         while (child != LAYX_INVALID_ID) {
             layx_item_t *pchild = layx_get_item(ctx, child);
             layx_vec4 child_rect = ctx->rects[child];
             const layx_vec4 child_margins = pchild->margins;
-            
-            float child_width = (float)child_rect[2] + (float)child_margins[0] + (float)child_margins[2];
-            
-            // 检查是否需要换行
-            if (x + child_width > offset + space && x > line_start) {
-                x = (float)offset;  // 换行
+
+            // 计算子元素的占用宽度（包含margin）
+            float child_content_width = (float)child_rect[2];
+
+            // 正确处理margin合并：第一个元素或换行后的第一个元素使用左margin
+            float margin_left = 0.0f;
+            float margin_right = 0.0f;
+
+            if (prev_child == LAYX_INVALID_ID) {
+                // 第一个子项（或换行后的第一个）：使用完整的左margin
+                margin_left = (float)child_margins[0];
+            } else {
+                // 非第一个子项：与上一个子项之间的边距取最大值
+                layx_item_t *pprev = layx_get_item(ctx, prev_child);
+                margin_left = layx_float_max((float)pprev->margins[2], (float)child_margins[0]);
             }
-            
-            child_rect[0] = (layx_scalar)x;
-            x += child_width;
+
+            // 如果是最后一个子项，使用完整的右margin
+            layx_id next_child = pchild->next_sibling;
+            if (next_child == LAYX_INVALID_ID || (layx_get_item(ctx, next_child)->flags & LAYX_BREAK)) {
+                margin_right = (float)child_margins[2];
+            }
+
+            float child_total_width = child_content_width + margin_left + margin_right;
+
+            // 检查是否需要换行
+            if (x + child_total_width > offset + space && x > line_start) {
+                x = (float)offset;  // 换行
+                prev_child = LAYX_INVALID_ID;  // 换行后重置prev_child，重新计算margin
+                // 换行后，当前元素成为新行的第一个元素，需要使用完整的左margin
+                margin_left = (float)child_margins[0];
+                child_total_width = child_content_width + margin_left + margin_right;
+            }
+
+            // 设置子元素位置
+            child_rect[0] = (layx_scalar)(x + margin_left);
+            x += child_total_width;
             max_line_width = layx_float_max(max_line_width, x - offset);
-            
+
             ctx->rects[child] = child_rect;
+            prev_child = child;
             child = pchild->next_sibling;
         }
     } else {
