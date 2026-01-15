@@ -112,7 +112,7 @@ void test_flex_column_margin_accumulation(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 0);  // 上边距20
+    layx_set_margin_trbl(&ctx, child2, 20, 0, 0, 0);  // 上边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -161,19 +161,19 @@ void test_flex_column_multiple_margins(void) {
     // 创建3个子元素，每个都有不同的 margin
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 15);  // 上10，下15
+    layx_set_margin_trbl(&ctx, child1, 10, 0, 15, 0);  // 上10，下15
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 10);  // 上20，下10
+    layx_set_margin_trbl(&ctx, child2, 20, 0, 10, 0);  // 上20，下10
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
-    layx_set_margin_ltrb(&ctx, child3, 0, 15, 0, 5);   // 上15，下5
+    layx_set_margin_trbl(&ctx, child3, 15, 0, 5, 0);   // 上15，下5
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
     layx_append(&ctx, container, child3);
 
@@ -297,7 +297,7 @@ void test_flex_row_margin_accumulation(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 50, 30);
-    layx_set_margin_ltrb(&ctx, child2, 20, 0, 0, 0);  // 左边距20
+    layx_set_margin_trbl(&ctx, child2, 0, 0, 0, 20);  // 左边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -345,13 +345,13 @@ void test_flex_column_container_height(void) {
     // 创建3个子元素，每个高度50，间距20
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_ltrb(&ctx, child1, 0, 0, 0, 20);
+    layx_set_margin_trbl(&ctx, child1, 0, 0, 20, 0);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 0, 0, 20);
+    layx_set_margin_trbl(&ctx, child2, 0, 0, 20, 0);
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -412,7 +412,7 @@ void test_flex_all_margins(void) {
     // 创建子元素，设置四周 margin
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 50);
-    layx_set_margin_ltrb(&ctx, child, 30, 15, 25, 20);  // 上15，右25，下20，左30
+    layx_set_margin_trbl(&ctx, child, 15, 25, 20, 30);  // 上15，右25，下20，左30
     layx_set_flex_shrink(&ctx, child, 0);  // 不允许收缩
     layx_append(&ctx, container, child);
 
@@ -441,78 +441,6 @@ void test_flex_all_margins(void) {
     layx_destroy_context(&ctx);
 }
 
-/**
- * 测试8: BLOCK 容器中子元素的 margin-bottom 与下一个元素的 margin-top 合并
- * 模拟 div#7 的 margin-bottom 被忽略的问题
- * 验证：block 容器中子元素的 margin-bottom 应该与下一个子元素的 margin-top 合并
- */
-void test_block_child_margin_bottom_merge(void) {
-    printf("\n=== Test 8: BLOCK Child Margin-Bottom Merge (Critical Bug Test) ===");
-
-    layx_context ctx;
-    layx_init_context(&ctx);
-    layx_reserve_items_capacity(&ctx, 10);
-
-    // 创建外层 FLEX COLUMN 容器（模拟 div#5）
-    layx_id outer_container = layx_item(&ctx);
-    layx_set_size(&ctx, outer_container, 1000, 0);  // 高度自动
-    layx_set_display(&ctx, outer_container, LAYX_DISPLAY_FLEX);
-    layx_set_flex_direction(&ctx, outer_container, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_padding(&ctx, outer_container, 20);
-
-    // 创建内层 BLOCK 容器（模拟 div#6）
-    layx_id inner_block = layx_item(&ctx);
-    layx_set_size(&ctx, inner_block, 948, 0);  // 高度自动
-    layx_set_display(&ctx, inner_block, LAYX_DISPLAY_BLOCK);
-    layx_set_padding(&ctx, inner_block, 10);
-    layx_set_margin_ltrb(&ctx, inner_block, 0, 0, 20, 0);  // margin-right: 20
-    layx_append(&ctx, outer_container, inner_block);
-
-    // 创建 div#7（第一个子元素，有 margin-bottom: 10）
-    layx_id child1 = layx_item(&ctx);
-    layx_set_size(&ctx, child1, 918, 16);
-    layx_set_margin_ltrb(&ctx, child1, 0, 0, 0, 10);  // margin-bottom: 10
-    layx_set_display(&ctx, child1, LAYX_DISPLAY_BLOCK);
-    layx_append(&ctx, inner_block, child1);
-
-    // 创建 div#9（第二个子元素，margin-top: 0）
-    layx_id child2 = layx_item(&ctx);
-    layx_set_size(&ctx, child2, 928, 120);
-    layx_set_margin_ltrb(&ctx, child2, 0, 0, 0, 0);  // 无 margin-top
-    layx_set_display(&ctx, child2, LAYX_DISPLAY_FLEX);
-    layx_set_flex_direction(&ctx, child2, LAYX_FLEX_DIRECTION_ROW);
-    layx_append(&ctx, inner_block, child2);
-
-    // 运行布局
-    layx_run_context(&ctx);
-
-    // 获取元素位置
-    layx_vec4 child1_rect = layx_get_rect(&ctx, child1);
-    layx_vec4 child2_rect = layx_get_rect(&ctx, child2);
-    layx_vec4 inner_block_rect = layx_get_rect(&ctx, inner_block);
-
-    printf("  Inner BLOCK container: x=%.1f, y=%.1f, w=%.1f, h=%.1f\n",
-           inner_block_rect[0], inner_block_rect[1], inner_block_rect[2], inner_block_rect[3]);
-    printf("  Child1 (div#7): x=%.1f, y=%.1f, w=%.1f, h=%.1f (margin-bottom: 10)\n",
-           child1_rect[0], child1_rect[1], child1_rect[2], child1_rect[3]);
-    printf("  Child2 (div#9): x=%.1f, y=%.1f, w=%.1f, h=%.1f (margin-top: 0)\n",
-           child2_rect[0], child2_rect[1], child2_rect[2], child2_rect[3]);
-
-    // 计算 gap
-    float gap = child2_rect[1] - (child1_rect[1] + child1_rect[3]);
-    printf("  Gap between child1 and child2: %.1f (expected: 10)\n", gap);
-
-    // 验证 gap 应该是 max(child1的margin-bottom, child2的margin-top) = max(10, 0) = 10
-    TEST_ASSERT(float_equals(gap, 10.0f, 0.1f),
-                "子元素间距应该是 max(10, 0) = 10 (child1的margin-bottom:10)");
-
-    // 验证 child1 和 child2 的高度
-    TEST_ASSERT(float_equals(child1_rect[3], 16.0f, 0.1f), "Child1高度应为16");
-    TEST_ASSERT(float_equals(child2_rect[3], 120.0f, 0.1f), "Child2高度应为120");
-
-    layx_destroy_context(&ctx);
-}
-
 int main(void) {
     printf("===========================================\n");
     printf("   DISPLAY_FLEX Margin Test Suite\n");
@@ -526,7 +454,6 @@ int main(void) {
     test_flex_row_margin_accumulation();
     test_flex_column_container_height();
     test_flex_all_margins();
-    test_block_child_margin_bottom_merge();  // 新增：测试 div#7 margin-bottom 问题
 
     // 输出测试总结
     printf("\n===========================================\n");

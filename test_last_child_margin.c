@@ -19,13 +19,13 @@ void test_last_child_margin_bottom() {
     // 创建子元素1：高度50，margin-bottom: 0
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 0);  // margin-top:10
+    layx_set_margin_trbl(&ctx, child1, 10, 0, 0, 0);  // margin-top:10
     layx_append(&ctx, container, child1);
 
     // 创建子元素2：高度50，margin-bottom: 30（关键测试点）
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 30);  // margin-top:20, margin-bottom:30
+    layx_set_margin_trbl(&ctx, child2, 20, 0, 30, 0);  // margin-top:20, margin-bottom:30
     layx_append(&ctx, container, child2);
 
     layx_run_context(&ctx);
@@ -93,13 +93,13 @@ void test_last_child_margin_right() {
     // 创建子元素1：宽度50，margin-right: 0
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 50, 30);
-    layx_set_margin_ltrb(&ctx, child1, 10, 0, 0, 0);  // margin-left:10
+    layx_set_margin_trbl(&ctx, child1, 0, 0, 0, 10);  // margin-left:10
     layx_append(&ctx, container, child1);
 
     // 创建子元素2：宽度50，margin-right: 30（关键测试点）
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 50, 30);
-    layx_set_margin_ltrb(&ctx, child2, 20, 0, 30, 0);  // margin-left:20, margin-right:30
+    layx_set_margin_trbl(&ctx, child2, 0, 30, 0, 20);  // margin-left:20, margin-right:30
     layx_append(&ctx, container, child2);
 
     layx_run_context(&ctx);

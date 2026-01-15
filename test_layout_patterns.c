@@ -239,12 +239,12 @@ void test_sidebar_layout() {
     // Sidebar items
     layx_id sidebar_item1 = layx_item(&ctx);
     layx_set_size(&ctx, sidebar_item1, 0, 50);
-    layx_set_margin_ltrb(&ctx, sidebar_item1, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, sidebar_item1, 0, 0, 10, 0);
     layx_append(&ctx, sidebar, sidebar_item1);
 
     layx_id sidebar_item2 = layx_item(&ctx);
     layx_set_size(&ctx, sidebar_item2, 0, 50);
-    layx_set_margin_ltrb(&ctx, sidebar_item2, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, sidebar_item2, 0, 0, 10, 0);
     layx_append(&ctx, sidebar, sidebar_item2);
 
     // Main content
@@ -308,12 +308,12 @@ void test_navbar_layout() {
     // Nav links
     layx_id link1 = layx_item(&ctx);
     layx_set_size(&ctx, link1, 80, 40);
-    layx_set_margin_ltrb(&ctx, link1, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, link1, 0, 10, 0, 0);
     layx_append(&ctx, links, link1);
 
     layx_id link2 = layx_item(&ctx);
     layx_set_size(&ctx, link2, 80, 40);
-    layx_set_margin_ltrb(&ctx, link2, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, link2, 0, 10, 0, 0);
     layx_append(&ctx, links, link2);
 
     layx_id link3 = layx_item(&ctx);
@@ -362,12 +362,12 @@ void test_card_grid_layout() {
 
     layx_id card1 = layx_item(&ctx);
     layx_set_size(&ctx, card1, 100, 100);
-    layx_set_margin_ltrb(&ctx, card1, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, card1, 0, 10, 0, 0);
     layx_append(&ctx, row1, card1);
 
     layx_id card2 = layx_item(&ctx);
     layx_set_size(&ctx, card2, 100, 100);
-    layx_set_margin_ltrb(&ctx, card2, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, card2, 0, 10, 0, 0);
     layx_append(&ctx, row1, card2);
 
     layx_id card3 = layx_item(&ctx);
@@ -379,17 +379,17 @@ void test_card_grid_layout() {
     layx_set_size(&ctx, row2, 0, 120);
     layx_set_display(&ctx, row2, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, row2, LAYX_FLEX_DIRECTION_ROW);
-    layx_set_margin_ltrb(&ctx, row2, 0, 10, 0, 0);
+    layx_set_margin_trbl(&ctx, row2, 10, 0, 0, 0);
     layx_append(&ctx, container, row2);
 
     layx_id card4 = layx_item(&ctx);
     layx_set_size(&ctx, card4, 100, 100);
-    layx_set_margin_ltrb(&ctx, card4, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, card4, 0, 10, 0, 0);
     layx_append(&ctx, row2, card4);
 
     layx_id card5 = layx_item(&ctx);
     layx_set_size(&ctx, card5, 100, 100);
-    layx_set_margin_ltrb(&ctx, card5, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, card5, 0, 10, 0, 0);
     layx_append(&ctx, row2, card5);
 
     layx_id card6 = layx_item(&ctx);
@@ -433,14 +433,14 @@ void test_form_layout() {
     for (int i = 0; i < 4; i++) {
         layx_id field = layx_item(&ctx);
         layx_set_size(&ctx, field, 360, 40);
-        layx_set_margin_ltrb(&ctx, field, 0, 0, 0, 10);
+        layx_set_margin_trbl(&ctx, field, 0, 0, 10, 0);
         layx_append(&ctx, form, field);
     }
 
     // Submit button
     layx_id button = layx_item(&ctx);
     layx_set_size(&ctx, button, 100, 40);
-    layx_set_margin_ltrb(&ctx, button, 0, 10, 0, 0);
+    layx_set_margin_trbl(&ctx, button, 10, 0, 0, 0);
     layx_append(&ctx, form, button);
 
     layx_run_context(&ctx);
@@ -473,7 +473,7 @@ void test_margin_and_padding() {
     // Item with margin
     layx_id item = layx_item(&ctx);
     layx_set_size(&ctx, item, 100, 50);
-    layx_set_margin_ltrb(&ctx, item, 20, 10, 20, 10);
+    layx_set_margin_trbl(&ctx, item, 10, 20, 10, 20);
     layx_append(&ctx, container, item);
 
     layx_run_context(&ctx);
@@ -515,7 +515,7 @@ void test_nested_layouts() {
     for (int i = 0; i < 3; i++) {
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 150, 50);
-        layx_set_margin_ltrb(&ctx, item, 0, 0, 0, 10);
+        layx_set_margin_trbl(&ctx, item, 0, 0, 10, 0);
         layx_append(&ctx, left, item);
     }
 
@@ -530,7 +530,7 @@ void test_nested_layouts() {
     for (int i = 0; i < 4; i++) {
         layx_id item = layx_item(&ctx);
         layx_set_size(&ctx, item, 150, 40);
-        layx_set_margin_ltrb(&ctx, item, 0, 0, 0, 8);
+        layx_set_margin_trbl(&ctx, item, 0, 0, 8, 0);
         layx_append(&ctx, right, item);
     }
 

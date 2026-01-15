@@ -19,14 +19,14 @@ void test_last_child_margin_with_shrink() {
     // 创建子元素1：高度100，flex-shrink: 1
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 100);
-    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 20);  // margin-top:10, margin-bottom:20
+    layx_set_margin_trbl(&ctx, child1, 10, 0, 20, 0);  // margin-top:10, margin-bottom:20
     layx_set_flex_shrink(&ctx, child1, 1.0f);
     layx_append(&ctx, container, child1);
 
     // 创建子元素2：高度100，flex-shrink: 1，margin-bottom: 30（关键测试点）
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 100);
-    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 30);  // margin-top:20, margin-bottom:30
+    layx_set_margin_trbl(&ctx, child2, 20, 0, 30, 0);  // margin-top:20, margin-bottom:30
     layx_set_flex_shrink(&ctx, child2, 1.0f);
     layx_append(&ctx, container, child2);
 
@@ -94,13 +94,13 @@ void test_nested_last_child_margin() {
     // 创建子元素1
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 20);
+    layx_set_margin_trbl(&ctx, child1, 10, 0, 20, 0);
     layx_append(&ctx, inner, child1);
 
     // 创建子元素2（最后一个，有margin-bottom）
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 30, 0, 40);  // margin-bottom:40
+    layx_set_margin_trbl(&ctx, child2, 30, 0, 40, 0);  // margin-bottom:40
     layx_append(&ctx, inner, child2);
 
     layx_run_context(&ctx);
@@ -154,13 +154,13 @@ void test_block_last_child_margin() {
     // 创建子元素1
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 20);
+    layx_set_margin_trbl(&ctx, child1, 10, 0, 20, 0);
     layx_append(&ctx, container, child1);
 
     // 创建子元素2（最后一个，有margin-bottom）
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_ltrb(&ctx, child2, 0, 30, 0, 40);  // margin-bottom:40
+    layx_set_margin_trbl(&ctx, child2, 30, 0, 40, 0);  // margin-bottom:40
     layx_append(&ctx, container, child2);
 
     layx_run_context(&ctx);

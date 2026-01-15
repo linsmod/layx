@@ -63,7 +63,19 @@ typedef void (*layx_measure_text_fn)(
     float *out_width,
     float *out_height
 );
+#define TRBL_TOP      0
+#define TRBL_RIGHT    1
+#define TRBL_BOTTOM   2
+#define TRBL_LEFT     3
+#define XYWH_X        0
+#define XYWH_Y        1
+#define XYWH_WIDTH    2
+#define XYWH_HEIGHT   3
 
+#define GET_TOP(v)        ((v)[TRBL_TOP])
+#define GET_RIGHT(v)      ((v)[TRBL_RIGHT])
+#define GET_BOTTOM(v)     ((v)[TRBL_BOTTOM])
+#define GET_LEFT(v)       ((v)[TRBL_LEFT])
 // Vector types
 #if defined(__GNUC__) || defined(__clang__)
 #ifdef LAYX_FLOAT
@@ -93,12 +105,13 @@ struct layx_vec2 {
 // Item structure
 typedef struct layx_item_t {
     uint32_t flags;
+    uint32_t auto_flags;
     layx_id first_child;
     layx_id next_sibling;
     layx_id parent;
-    layx_vec4 margins;
-    layx_vec4 padding;
-    layx_vec4 border;
+    layx_vec4 margin_trbl; // t r b l
+    layx_vec4 padding_trbl; // t r b l
+    layx_vec4 border_trbl; // t r b l
     layx_vec2 size;
     layx_vec2 min_size;
     layx_vec2 max_size;
@@ -270,9 +283,36 @@ enum {
     // 滚动条标志位 (在flags中使用)
     LAYX_HAS_VSCROLL = 0x400000,  // 垂直滚动条
     LAYX_HAS_HSCROLL = 0x800000,  // 水平滚动条
-    LAYX_HAS_SCROLLBARS = LAYX_HAS_VSCROLL | LAYX_HAS_HSCROLL
+    LAYX_HAS_SCROLLBARS = LAYX_HAS_VSCROLL | LAYX_HAS_HSCROLL,
+};
+/* Auto 标志位（16位）*/
+enum {
+    AUTO_WIDTH           = 0x0001,
+    AUTO_HEIGHT          = 0x0002,
+    AUTO_MARGIN_LEFT     = 0x0004,
+    AUTO_MARGIN_RIGHT    = 0x0008,
+    AUTO_MARGIN_TOP      = 0x0010,
+    AUTO_MARGIN_BOTTOM   = 0x0020,
+    AUTO_MARGIN_ALL      = 0x003C,  // 所有边距auto
+    AUTO_PADDING_LEFT    = 0x0040,
+    AUTO_PADDING_RIGHT   = 0x0080,
+    AUTO_PADDING_TOP     = 0x0100,
+    AUTO_PADDING_BOTTOM  = 0x0200,
+    AUTO_BORDER_LEFT     = 0x0400,
+    AUTO_BORDER_RIGHT    = 0x0800,
+    AUTO_BORDER_TOP      = 0x1000,
+    AUTO_BORDER_BOTTOM   = 0x2000,
 };
 
+/* 使用宏简化检查 */
+#define IS_AUTO_SIZE(item, dim) \
+    ((item)->auto_flags & ((dim) == DIM_WIDTH ? AUTO_WIDTH : AUTO_HEIGHT))
+
+#define IS_AUTO_MARGIN(item, test_enum) \
+    ((item)->auto_flags & (AUTO_MARGIN_LEFT << (test_enum)))
+
+#define IS_AUTO_PADDING(item, test_enum) \
+    ((item)->auto_flags & (AUTO_PADDING_LEFT << (test_enum)))
 // Context management
 LAYX_EXPORT void layx_init_context(layx_context *ctx);
 LAYX_EXPORT void layx_reserve_items_capacity(layx_context *ctx, layx_id count);
@@ -380,33 +420,33 @@ LAYX_EXPORT void layx_set_margin_top(layx_context *ctx, layx_id item, layx_scala
 LAYX_EXPORT void layx_set_margin_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_margin_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_margin_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_margin_ltrb(layx_context *ctx, layx_id item,
-                                layx_scalar left, layx_scalar top,
-                                layx_scalar right, layx_scalar bottom);
+LAYX_EXPORT void layx_set_margin_trbl(layx_context *ctx, layx_id item,layx_scalar top,
+                                layx_scalar right, layx_scalar bottom,
+                                layx_scalar left);
 
 LAYX_EXPORT void layx_set_padding(layx_context *ctx, layx_id item, layx_scalar value);
 LAYX_EXPORT void layx_set_padding_top(layx_context *ctx, layx_id item, layx_scalar top);
 LAYX_EXPORT void layx_set_padding_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_padding_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_padding_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_padding_ltrb(layx_context *ctx, layx_id item,
-                                 layx_scalar left, layx_scalar top,
-                                 layx_scalar right, layx_scalar bottom);
+LAYX_EXPORT void layx_set_padding_trbl(layx_context *ctx, layx_id item,layx_scalar top,
+                                layx_scalar right, layx_scalar bottom,
+                                layx_scalar left);
 
 LAYX_EXPORT void layx_set_border(layx_context *ctx, layx_id item, layx_scalar value);
 LAYX_EXPORT void layx_set_border_top(layx_context *ctx, layx_id item, layx_scalar top);
 LAYX_EXPORT void layx_set_border_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_border_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_border_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_border_ltrb(layx_context *ctx, layx_id item,
-                                 layx_scalar left, layx_scalar top,
-                                 layx_scalar right, layx_scalar bottom);
+LAYX_EXPORT void layx_set_border_trbl(layx_context *ctx, layx_id item,layx_scalar top,
+                                layx_scalar right, layx_scalar bottom,
+                                layx_scalar left);                                 
 
 
 // Getters for box model
-LAYX_EXPORT void layx_get_margin_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
-LAYX_EXPORT void layx_get_padding_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
-LAYX_EXPORT void layx_get_border_ltrb(layx_context *ctx, layx_id item, layx_scalar *left, layx_scalar *top, layx_scalar *right, layx_scalar *bottom);
+LAYX_EXPORT void layx_get_margin_trbl( layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom,layx_scalar *left);
+LAYX_EXPORT void layx_get_padding_trbl(layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom,layx_scalar *left);
+LAYX_EXPORT void layx_get_border_trbl( layx_context *ctx, layx_id item, layx_scalar *top, layx_scalar *right, layx_scalar *bottom,layx_scalar *left);
 
 // Style application
 LAYX_EXPORT void layx_style_reset(layx_style *style);
@@ -540,13 +580,13 @@ LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
 {
     LAYX_ASSERT(id != LAYX_INVALID_ID && id < ctx->count);
     layx_vec4 rect = ctx->rects[id];
-    layx_vec4 padding = ctx->items[id].padding;
-    layx_vec4 borders = ctx->items[id].border;
-    
-    *x = rect[0] + padding[0] + borders[0];
-    *y = rect[1] + padding[1] + borders[1];
-    *width = rect[2] - (padding[0] + padding[2] + borders[0] + borders[2]);
-    *height = rect[3] - (padding[1] + padding[3] + borders[1] + borders[3]);
+    layx_vec4 padding = ctx->items[id].padding_trbl;
+    layx_vec4 borders = ctx->items[id].border_trbl;
+
+    *x = rect[0] + padding[TRBL_LEFT] + borders[TRBL_LEFT];
+    *y = rect[1] + padding[TRBL_TOP] + borders[TRBL_TOP];
+    *width = rect[2] - (padding[TRBL_LEFT] + padding[TRBL_RIGHT] + borders[TRBL_LEFT] + borders[TRBL_RIGHT]);
+    *height = rect[3] - (padding[TRBL_TOP] + padding[TRBL_BOTTOM] + borders[TRBL_TOP] + borders[TRBL_BOTTOM]);
 }
 
 

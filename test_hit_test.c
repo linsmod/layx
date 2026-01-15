@@ -339,12 +339,12 @@ void test_hit_overlapping_elements(void) {
     // 创建两个重叠的子元素（通过负margin实现重叠）
     layx_id elem1 = layx_item(&ctx);
     layx_set_size(&ctx, elem1, 100, 100);
-    layx_set_margin_ltrb(&ctx, elem1, 0, 0, 0, 0);
+    layx_set_margin_trbl(&ctx, elem1, 0, 0, 0, 0);
     layx_append(&ctx, container, elem1);
 
     layx_id elem2 = layx_item(&ctx);
     layx_set_size(&ctx, elem2, 100, 100);
-    layx_set_margin_ltrb(&ctx, elem2, -50, -50, 0, 0);  // 负margin导致重叠
+    layx_set_margin_trbl(&ctx, elem2, -50, 0, 0, -50);  // 负margin导致重叠
     layx_append(&ctx, container, elem2);
 
     layx_run_context(&ctx);
@@ -515,18 +515,18 @@ void test_hit_complex_layout(void) {
     layx_set_size(&ctx, sidebar, 150, 0);
     layx_set_display(&ctx, sidebar, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, sidebar, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_margin_ltrb(&ctx, sidebar, 0, 0, 10, 0);
+    layx_set_margin_trbl(&ctx, sidebar, 0, 10, 0, 0);
     layx_append(&ctx, root, sidebar);
 
     // 侧边栏按钮
     layx_id btn1 = layx_item(&ctx);
     layx_set_size(&ctx, btn1, 0, 40);
-    layx_set_margin_ltrb(&ctx, btn1, 0, 0, 0, 5);
+    layx_set_margin_trbl(&ctx, btn1, 0, 0, 5, 0);
     layx_append(&ctx, sidebar, btn1);
 
     layx_id btn2 = layx_item(&ctx);
     layx_set_size(&ctx, btn2, 0, 40);
-    layx_set_margin_ltrb(&ctx, btn2, 0, 0, 0, 5);
+    layx_set_margin_trbl(&ctx, btn2, 0, 0, 5, 0);
     layx_append(&ctx, sidebar, btn2);
 
     // 主内容区
@@ -538,7 +538,7 @@ void test_hit_complex_layout(void) {
     // Header
     layx_id header = layx_item(&ctx);
     layx_set_size(&ctx, header, 400, 60);  // 设置固定宽度和高度
-    layx_set_margin_ltrb(&ctx, header, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, header, 0, 0, 10, 0);
     layx_append(&ctx, content, header);
 
     // Body（滚动容器）
@@ -551,17 +551,17 @@ void test_hit_complex_layout(void) {
     // 添加多个卡片
     layx_id card1 = layx_item(&ctx);
     layx_set_size(&ctx, card1, 400, 80);  // 设置固定宽度和高度
-    layx_set_margin_ltrb(&ctx, card1, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, card1, 0, 0, 10, 0);
     layx_append(&ctx, body, card1);
 
     layx_id card2 = layx_item(&ctx);
     layx_set_size(&ctx, card2, 400, 80);  // 设置固定宽度和高度
-    layx_set_margin_ltrb(&ctx, card2, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, card2, 0, 0, 10, 0);
     layx_append(&ctx, body, card2);
 
     layx_id card3 = layx_item(&ctx);
     layx_set_size(&ctx, card3, 400, 80);  // 设置固定宽度和高度
-    layx_set_margin_ltrb(&ctx, card3, 0, 0, 0, 10);
+    layx_set_margin_trbl(&ctx, card3, 0, 0, 10, 0);
     layx_append(&ctx, body, card3);
 
     layx_run_context(&ctx);

@@ -146,14 +146,14 @@ void test_container_defaults(void) {
                 "默认没有固定高度标志");
     
     // 默认margin/padding/border为0
-    TEST_ASSERT(item->margins[0] == 0.0f && item->margins[1] == 0.0f && 
-                item->margins[2] == 0.0f && item->margins[3] == 0.0f,
+    TEST_ASSERT(item->margin_trbl[0] == 0.0f && item->margin_trbl[1] == 0.0f && 
+                item->margin_trbl[2] == 0.0f && item->margin_trbl[3] == 0.0f,
                 "margin默认为0 (CSS规范: 0)");
-    TEST_ASSERT(item->padding[0] == 0.0f && item->padding[1] == 0.0f && 
-                item->padding[2] == 0.0f && item->padding[3] == 0.0f,
+    TEST_ASSERT(item->padding_trbl[0] == 0.0f && item->padding_trbl[1] == 0.0f && 
+                item->padding_trbl[2] == 0.0f && item->padding_trbl[3] == 0.0f,
                 "padding默认为0 (CSS规范: 0)");
-    TEST_ASSERT(item->border[0] == 0.0f && item->border[1] == 0.0f && 
-                item->border[2] == 0.0f && item->border[3] == 0.0f,
+    TEST_ASSERT(item->border_trbl[0] == 0.0f && item->border_trbl[1] == 0.0f && 
+                item->border_trbl[2] == 0.0f && item->border_trbl[3] == 0.0f,
                 "border默认为0 (CSS规范: 0)");
     
     layx_destroy_context(&ctx);
@@ -296,39 +296,39 @@ void test_margin_padding_border_defaults(void) {
     layx_item_t *pitem = layx_get_item(&ctx, item);
     
     // CSS: margin默认为0
-    TEST_ASSERT(pitem->margins[0] == 0.0f && pitem->margins[1] == 0.0f && 
-                pitem->margins[2] == 0.0f && pitem->margins[3] == 0.0f,
+    TEST_ASSERT(pitem->margin_trbl[0] == 0.0f && pitem->margin_trbl[1] == 0.0f && 
+                pitem->margin_trbl[2] == 0.0f && pitem->margin_trbl[3] == 0.0f,
                 "margin默认为0");
     
     // CSS: padding默认为0
-    TEST_ASSERT(pitem->padding[0] == 0.0f && pitem->padding[1] == 0.0f && 
-                pitem->padding[2] == 0.0f && pitem->padding[3] == 0.0f,
+    TEST_ASSERT(pitem->padding_trbl[0] == 0.0f && pitem->padding_trbl[1] == 0.0f && 
+                pitem->padding_trbl[2] == 0.0f && pitem->padding_trbl[3] == 0.0f,
                 "padding默认为0");
     
     // CSS: border默认为0
-    TEST_ASSERT(pitem->border[0] == 0.0f && pitem->border[1] == 0.0f && 
-                pitem->border[2] == 0.0f && pitem->border[3] == 0.0f,
+    TEST_ASSERT(pitem->border_trbl[0] == 0.0f && pitem->border_trbl[1] == 0.0f && 
+                pitem->border_trbl[2] == 0.0f && pitem->border_trbl[3] == 0.0f,
                 "border默认为0");
     
     // 设置margin后的状态
-    layx_set_margin_ltrb(&ctx, item, 10, 20, 30, 40);
+    layx_set_margin_trbl(&ctx, item, 10, 20, 30, 40);
     pitem = layx_get_item(&ctx, item);
-    TEST_ASSERT(pitem->margins[0] == 10.0f && pitem->margins[1] == 20.0f &&
-                pitem->margins[2] == 30.0f && pitem->margins[3] == 40.0f,
+    TEST_ASSERT(pitem->margin_trbl[0] == 10.0f && pitem->margin_trbl[1] == 20.0f &&
+                pitem->margin_trbl[2] == 30.0f && pitem->margin_trbl[3] == 40.0f,
                 "margin可以被正确设置 (left, top, right, bottom)");
     
     // 设置padding后的状态
-    layx_set_padding_ltrb(&ctx, item, 5, 10, 15, 20);
+    layx_set_padding_trbl(&ctx, item, 5, 10, 15, 20);
     pitem = layx_get_item(&ctx, item);
-    TEST_ASSERT(pitem->padding[0] == 5.0f && pitem->padding[1] == 10.0f &&
-                pitem->padding[2] == 15.0f && pitem->padding[3] == 20.0f,
+    TEST_ASSERT(pitem->padding_trbl[0] == 5.0f && pitem->padding_trbl[1] == 10.0f &&
+                pitem->padding_trbl[2] == 15.0f && pitem->padding_trbl[3] == 20.0f,
                 "padding可以被正确设置");
     
     // 设置border后的状态
-    layx_set_border_ltrb(&ctx, item, 2, 3, 4, 5);
+    layx_set_border_trbl(&ctx, item, 2, 3, 4, 5);
     pitem = layx_get_item(&ctx, item);
-    TEST_ASSERT(pitem->border[0] == 2.0f && pitem->border[1] == 3.0f &&
-                pitem->border[2] == 4.0f && pitem->border[3] == 5.0f,
+    TEST_ASSERT(pitem->border_trbl[0] == 2.0f && pitem->border_trbl[1] == 3.0f &&
+                pitem->border_trbl[2] == 4.0f && pitem->border_trbl[3] == 5.0f,
                 "border可以被正确设置");
     
     layx_destroy_context(&ctx);
@@ -540,31 +540,31 @@ static void test_getter_functions(void) {
     layx_prepend(&ctx, container, item);
     
     // 测试默认值为0
-    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
+    layx_get_margin_trbl(&ctx, item, &t, &r, &b, &l);
     TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认margin getter返回0");
-    layx_get_padding_ltrb(&ctx, item, &l, &t, &r, &b);
+    layx_get_padding_trbl(&ctx, item, &t, &r, &b, &l);
     TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认padding getter返回0");
-    layx_get_border_ltrb(&ctx, item, &l, &t, &r, &b);
+    layx_get_border_trbl(&ctx, item, &t, &r, &b, &l);
     TEST_ASSERT(l == 0 && t == 0 && r == 0 && b == 0, "默认border getter返回0");
     
     // 测试设置后返回值正确
-    layx_set_margin_ltrb(&ctx, item, 10, 20, 30, 40);
-    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
-    TEST_ASSERT(l == 10 && t == 20 && r == 30 && b == 40, "margin getter正确返回ltrb值(10,20,30,40)");
-    
-    layx_set_padding_ltrb(&ctx, item, 5, 15, 25, 35);
-    layx_get_padding_ltrb(&ctx, item, &l, &t, &r, &b);
-    TEST_ASSERT(l == 5 && t == 15 && r == 25 && b == 35, "padding getter正确返回ltrb值(5,15,25,35)");
-    
-    layx_set_border_ltrb(&ctx, item, 1, 2, 3, 4);
-    layx_get_border_ltrb(&ctx, item, &l, &t, &r, &b);
-    TEST_ASSERT(l == 1 && t == 2 && r == 3 && b == 4, "border getter正确返回ltrb值(1,2,3,4)");
-    
+    layx_set_margin_trbl(&ctx, item, 10, 20, 30, 40);
+    layx_get_margin_trbl(&ctx, item, &t, &r, &b, &l);
+    TEST_ASSERT(t == 10 && r == 20 && b == 30 && l == 40, "margin getter正确返回trbl值(10,20,30,40)");
+
+    layx_set_padding_trbl(&ctx, item, 5, 15, 25, 35);
+    layx_get_padding_trbl(&ctx, item, &t, &r, &b, &l);
+    TEST_ASSERT(t == 5 && r == 15 && b == 25 && l == 35, "padding getter正确返回trbl值(5,15,25,35)");
+
+    layx_set_border_trbl(&ctx, item, 1, 2, 3, 4);
+    layx_get_border_trbl(&ctx, item, &t, &r, &b, &l);
+    TEST_ASSERT(t == 1 && r == 2 && b == 3 && l == 4, "border getter正确返回trbl值(1,2,3,4)");
+
     // 测试混合设置
     layx_set_margin_left(&ctx, item, 100);
     layx_set_margin_top(&ctx, item, 200);
-    layx_get_margin_ltrb(&ctx, item, &l, &t, &r, &b);
-    TEST_ASSERT(l == 100 && t == 200 && r == 30 && b == 40, "混合设置后margin getter正确返回(100,200,30,40)");
+    layx_get_margin_trbl(&ctx, item, &t, &r, &b, &l);
+    TEST_ASSERT(t == 200 && r == 20 && b == 30 && l == 100, "混合设置后margin getter正确返回(200,20,30,100)");
     
     layx_destroy_context(&ctx);
     printf("  \u2713 margin/padding/border getter函数测试完成\n");
