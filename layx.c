@@ -165,6 +165,101 @@ void layx_run_context(layx_context *ctx)
 
 extern void layx_init_scroll_fields(layx_context *ctx, layx_id item);
 
+// 计算并更新项目的滚动相关字段
+static void layx_update_scroll_fields(layx_context *ctx, layx_id item) {
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    layx_vec4 rect = ctx->rects[item];
+    
+    // 1. 初始化滚动字段
+    pitem->scroll_offset[0] = 0.0f;
+    pitem->scroll_offset[1] = 0.0f;
+    pitem->has_scrollbars = 0;
+    
+    // 2. 计算客户区尺寸（内容区域，不包含 padding 和 border）
+    layx_scalar client_width = rect[XYWH_WIDTH] - 
+                               pitem->padding_trbl[TRBL_LEFT] - pitem->padding_trbl[TRBL_RIGHT] -
+                               pitem->border_trbl[TRBL_LEFT] - pitem->border_trbl[TRBL_RIGHT];
+    layx_scalar client_height = rect[XYWH_HEIGHT] - 
+                                pitem->padding_trbl[TRBL_TOP] - pitem->padding_trbl[TRBL_BOTTOM] -
+                                pitem->border_trbl[TRBL_TOP] - pitem->border_trbl[TRBL_BOTTOM];
+    client_width = client_width > 0 ? client_width : 0;
+    client_height = client_height > 0 ? client_height : 0;
+    
+    // 3. 计算内容尺寸（所有子元素的总占用空间）
+    layx_scalar content_width = 0;
+    layx_scalar content_height = 0;
+    
+    layx_id child = pitem->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        layx_vec4 child_rect = ctx->rects[child];
+        
+        // 子元素相对于父元素的绝对位置 + 尺寸 + margin
+        layx_scalar child_right = child_rect[XYWH_X] + child_rect[XYWH_WIDTH] + pchild->margin_trbl[TRBL_RIGHT];
+        layx_scalar child_bottom = child_rect[XYWH_Y] + child_rect[XYWH_HEIGHT] + pchild->margin_trbl[TRBL_BOTTOM];
+        
+        // 取最大值作为内容尺寸
+        if (child_right > content_width) content_width = child_right;
+        if (child_bottom > content_height) content_height = child_bottom;
+        
+        child = pchild->next_sibling;
+    }
+    
+    // 如果没有子元素，内容尺寸等于客户区尺寸
+    if (content_width == 0) content_width = client_width;
+    if (content_height == 0) content_height = client_height;
+    
+    pitem->content_size[0] = content_width;
+    pitem->content_size[1] = content_height;
+    
+    // 4. 计算最大滚动值
+    // 对于 overflow:visible，scroll_max 始终为 0
+    if (pitem->overflow_x == LAYX_OVERFLOW_VISIBLE) {
+        pitem->scroll_max[0] = 0.0f;
+    } else {
+        pitem->scroll_max[0] = content_width - client_width;
+        if (pitem->scroll_max[0] < 0.0f) pitem->scroll_max[0] = 0.0f;
+    }
+    
+    if (pitem->overflow_y == LAYX_OVERFLOW_VISIBLE) {
+        pitem->scroll_max[1] = 0.0f;
+    } else {
+        pitem->scroll_max[1] = content_height - client_height;
+        if (pitem->scroll_max[1] < 0.0f) pitem->scroll_max[1] = 0.0f;
+    }
+    
+    // 5. 设置滚动条标志
+    // 水平滚动条
+    int has_h_scroll = 0;
+    if (pitem->overflow_x == LAYX_OVERFLOW_SCROLL) {
+        has_h_scroll = 1;  // overflow:scroll 始终显示滚动条
+    } else if (pitem->overflow_x == LAYX_OVERFLOW_AUTO) {
+        has_h_scroll = (pitem->scroll_max[0] > 0.0f) ? 1 : 0;
+    }
+    
+    // 垂直滚动条
+    int has_v_scroll = 0;
+    if (pitem->overflow_y == LAYX_OVERFLOW_SCROLL) {
+        has_v_scroll = 1;  // overflow:scroll 始终显示滚动条
+    } else if (pitem->overflow_y == LAYX_OVERFLOW_AUTO) {
+        has_v_scroll = (pitem->scroll_max[1] > 0.0f) ? 1 : 0;
+    }
+    
+    pitem->has_scrollbars = (has_v_scroll ? 1 : 0) | ((has_h_scroll ? 1 : 0) << 1);
+    
+    // 更新 flags
+    if (has_v_scroll) {
+        pitem->flags |= LAYX_HAS_VSCROLL;
+    } else {
+        pitem->flags &= ~LAYX_HAS_VSCROLL;
+    }
+    if (has_h_scroll) {
+        pitem->flags |= LAYX_HAS_HSCROLL;
+    } else {
+        pitem->flags &= ~LAYX_HAS_HSCROLL;
+    }
+}
+
 void layx_run_item(layx_context *ctx, layx_id item)
 {
     LAYX_ASSERT(ctx != NULL);
@@ -176,6 +271,9 @@ void layx_run_item(layx_context *ctx, layx_id item)
     // 纵向计算尺寸和排列（会递归计算内容尺寸和滚动条）
     layx_calc_size(ctx, item, LAYX_INVALID_ID,1);
     layx_arrange(ctx, item,LAYX_INVALID_ID, 1);
+    
+    // 计算滚动相关字段
+    layx_update_scroll_fields(ctx, item);
 }
 
 void layx_clear_item_break(layx_context *ctx, layx_id item)
@@ -994,8 +1092,8 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
     ctx->rects[item][SIZE_DIM(dim)] = pitem->margin_trbl[START_SIDE(dim)];
 
     layx_scalar result_size;
-    if (pitem->size[SIZE_DIM(dim)] != 0) {
-        result_size = pitem->size[SIZE_DIM(dim)];
+    if (pitem->size[dim] != 0) {
+        result_size = pitem->size[dim];
     } else {
         layx_scalar cal_size;
         layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
@@ -1099,7 +1197,7 @@ void layx_arrange_stacked(
         // 用于计算flex-shrink权重
         float total_shrink_factor = 0.0f;
 
-        LAYX_DEBUG_PRINT("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
+        printf("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
 
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
@@ -1117,11 +1215,11 @@ void layx_arrange_stacked(
             layx_scalar extend = used;
             if (has_flex_grow) {
                 ++count;
-                // flex-grow 元素：位置 + 尺寸（不包含结束 margin）
-                extend += child_rect[POINT_DIM(dim)] + child_rect[SIZE_DIM(dim)];
+                // flex-grow 元素：尺寸（不包含 margin）
+                extend += child_rect[SIZE_DIM(dim)];
             } else {
-                // 非flex-grow 元素：位置 + 尺寸（不包含结束 margin）
-                extend += child_rect[POINT_DIM(dim)] + child_rect[SIZE_DIM(dim)];
+                // 非flex-grow 元素：尺寸（不包含 margin）
+                extend += child_rect[SIZE_DIM(dim)];
 
                 // 计算flex-shrink权重（如果flex_shrink > 0，则参与压缩）
                 // 只在 flex 容器中生效
@@ -1185,7 +1283,7 @@ void layx_arrange_stacked(
             }
         }
 
-        float x = (float)content_offset;
+        float x = (float)content_offset + extra_margin;
         float x1;
         layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
 
@@ -1270,9 +1368,11 @@ void layx_arrange_stacked(
                     }
                 }
 
-                // 加上padding和border和margin
-                min_content_size += pchild->padding_trbl[START_SIDE(dim)] + pchild->padding_trbl[END_SIDE(dim)] +
-                                pchild->border_trbl[START_SIDE(dim)] + pchild->border_trbl[END_SIDE(dim)];
+                // 加上padding和border和margin（注意：只在没有子元素的情况下才添加）
+                if (pchild->first_child == LAYX_INVALID_ID && !pchild->measure_text_fn) {
+                    min_content_size += pchild->padding_trbl[START_SIDE(dim)] + pchild->padding_trbl[END_SIDE(dim)] +
+                                    pchild->border_trbl[START_SIDE(dim)] + pchild->border_trbl[END_SIDE(dim)];
+                }
 
                 // 如果空间不足且总shrink权重>0，根据flex-shrink进行压缩
                 // 重要：flex-shrink 只在 flex 容器中生效，BLOCK 容器不压缩子项
@@ -1288,17 +1388,19 @@ void layx_arrange_stacked(
                     constrained_size = shrunk_size;
                     if (dim == 0 && pchild->min_size[0] > 0) {
                         constrained_size = layx_float_max(constrained_size, (float)pchild->min_size[0]);
-                    } else if (dim == 1 && pchild->min_size[1] > 0) {
+                    }
+                    if (dim == 1 && pchild->min_size[1] > 0) {
                         constrained_size = layx_float_max(constrained_size, (float)pchild->min_size[1]);
                     }
                     if (dim == 0 && pchild->max_size[0] > 0) {
                         constrained_size = layx_float_min(constrained_size, (float)pchild->max_size[0]);
-                    } else if (dim == 1 && pchild->max_size[1] > 0) {
+                    }
+                    if (dim == 1 && pchild->max_size[1] > 0) {
                         constrained_size = layx_float_min(constrained_size, (float)pchild->max_size[1]);
                     }
 
                     // 确保不小于内容最小尺寸
-                    float constrained_size = layx_float_max((float)min_content_size, constrained_size);
+                    constrained_size = layx_float_max((float)min_content_size, constrained_size);
                     x1 = ix0 + constrained_size;
                 } else {
                     // 不需要压缩，使用原始尺寸，但要确保不小于内容最小尺寸
@@ -1307,12 +1409,14 @@ void layx_arrange_stacked(
                     // 应用 min/max 约束
                     if (dim == 0 && pchild->min_size[0] > 0) {
                         final_size = layx_float_max(final_size, (float)pchild->min_size[0]);
-                    } else if (dim == 1 && pchild->min_size[1] > 0) {
+                    }
+                    if (dim == 1 && pchild->min_size[1] > 0) {
                         final_size = layx_float_max(final_size, (float)pchild->min_size[1]);
                     }
                     if (dim == 0 && pchild->max_size[0] > 0) {
                         final_size = layx_float_min(final_size, (float)pchild->max_size[0]);
-                    } else if (dim == 1 && pchild->max_size[1] > 0) {
+                    }
+                    if (dim == 1 && pchild->max_size[1] > 0) {
                         final_size = layx_float_min(final_size, (float)pchild->max_size[1]);
                     }
 
