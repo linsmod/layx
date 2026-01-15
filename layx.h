@@ -126,7 +126,7 @@ typedef struct layx_item_t {
     layx_measure_text_fn measure_text_fn;  // NULL 表示不是文本节点
     void *measure_text_user_data;          // 用户数据（通常指向 ui_component）
 } layx_item_t;
-
+typedef layx_vec2 (*layx_screen_to_local_fn)(layx_vec2 screen_pos);
 // Context structure
 typedef struct layx_context {
     layx_item_t *items;
@@ -139,6 +139,7 @@ typedef struct layx_context {
     layx_vec4 *rects;
     layx_id capacity;
     layx_id count;
+    layx_screen_to_local_fn screen_to_local_fn;
 } layx_context;
 
 // Display property
@@ -468,10 +469,82 @@ LAYX_STATIC_INLINE void layx_get_rect_xywh(
     if (width) *width = rect[2];
     if (height) *height = rect[3];
 }
-LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id id, layx_scalar x, layx_scalar y){
-    layx_vec4 rect = ctx->rects[id];
-    return x >= rect[0] && x < rect[0] + rect[2] && y >= rect[1] && y < rect[1] + rect[3];
+LAYX_STATIC_INLINE int layx_is_scrollable(const layx_item_t *item) {
+    return item->overflow_x == LAYX_OVERFLOW_SCROLL || 
+           item->overflow_x == LAYX_OVERFLOW_AUTO ||
+           item->overflow_y == LAYX_OVERFLOW_SCROLL || 
+           item->overflow_y == LAYX_OVERFLOW_AUTO;
 }
+LAYX_STATIC_INLINE int layx_point_in_rect(layx_scalar x, layx_scalar y, layx_vec4 rect) {
+    return x >= rect[0] && 
+           x < rect[0] + rect[2] && 
+           y >= rect[1] && 
+           y < rect[1] + rect[3];
+}
+
+LAYX_STATIC_INLINE layx_item_t* layx_find_scroll_parent(const layx_context *ctx, layx_item_t *item) {
+    while(item) {
+        if(item->overflow_x != LAYX_OVERFLOW_VISIBLE || 
+           item->overflow_y != LAYX_OVERFLOW_VISIBLE) {
+            return item;
+        }
+        item = layx_get_item(ctx, item->parent);
+    }
+    return 0;
+}
+LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id root_id, layx_scalar screen_x, layx_scalar screen_y) {
+    // 1. 获取元素
+    layx_item_t *item = layx_get_item(ctx, root_id);
+    if (!item) return 0;
+    
+    // 2. 获取元素边界框
+    layx_vec4 rect = ctx->rects[root_id];
+    
+    // 3. 屏幕坐标到本地坐标转换（如果需要）
+    layx_scalar test_x = screen_x;
+    layx_scalar test_y = screen_y;
+    if (ctx->screen_to_local_fn) {
+        layx_vec2 local_pos = ctx->screen_to_local_fn((layx_vec2){screen_x, screen_y});
+        test_x = local_pos[0];
+        test_y = local_pos[1];
+    }
+    
+    // 4. 处理滚动偏移 - 正确顺序：从最外层滚动容器到当前元素
+    // 收集所有滚动祖先
+    layx_item_t *scroll_ancestors[32]; // 假设最多32层嵌套
+    int depth = 0;
+    layx_item_t *current = item;
+    
+    while (current && depth < 32) {
+        if (layx_is_scrollable(current)) {
+            scroll_ancestors[depth++] = current;
+        }
+        // 检查 parent ID 是否有效，避免访问无效元素
+        if (current->parent == LAYX_INVALID_ID || current->parent >= ctx->count) {
+            break;
+        }
+        current = layx_get_item(ctx, current->parent);
+    }
+    
+    // 应用滚动偏移（从最外层到最内层）
+    for (int i = depth - 1; i >= 0; i--) {
+        test_x -= scroll_ancestors[i]->scroll_offset[0];
+        test_y -= scroll_ancestors[i]->scroll_offset[1];
+        
+        // 可选：检查是否在滚动容器的可见区域内
+        // 如果要严格匹配滚动裁剪，可以取消注释下面的代码
+        /*
+        layx_vec4 scroll_rect = ctx->rects[scroll_ancestors[i]->id];
+        if (!layx_point_in_rect(test_x, test_y, scroll_rect)) {
+            return 0; // 点在滚动容器可见区域外
+        }
+        */
+    }
+    
+    // 5. 检查点是否在元素边界框内
+    return layx_point_in_rect(test_x, test_y, rect);
+}
+
 LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
         const layx_context *ctx, layx_id id,
         layx_scalar *x, layx_scalar *y, layx_scalar *width, layx_scalar *height)
@@ -532,9 +605,6 @@ LAYX_EXPORT layx_scalar layx_get_offset_height(layx_context *ctx, layx_id item);
 // Debug functions
 LAYX_EXPORT const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item);
 LAYX_EXPORT const char* layx_get_item_alignment_string(layx_context *ctx, layx_id item);
-
-// Text measurement functions
-LAYX_EXPORT void layx_set_mesure_fn(layx_context *ctx, layx_id item_id, layx_measure_text_fn fn, void *user_data);
 
 LAYX_EXPORT void layx_dump_tree(layx_context *layout_ctx, layx_id layout_id, int indent);
 #undef LAYX_EXPORT
