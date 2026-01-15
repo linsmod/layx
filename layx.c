@@ -89,6 +89,7 @@ void layx_init_context(layx_context *ctx)
     ctx->items = NULL;
     ctx->rects = NULL;
     ctx->screen_to_local_fn = NULL;
+    ctx->free_list_head = LAYX_INVALID_ID;
 }
 
 void layx_reserve_items_capacity(layx_context *ctx, layx_id count)
@@ -136,7 +137,10 @@ void layx_destroy_context(layx_context *ctx)
 }
 
 void layx_reset_context(layx_context *ctx)
-{ ctx->count = 0; }
+{
+    ctx->count = 0;
+    ctx->free_list_head = LAYX_INVALID_ID;
+}
 
 // Layout calculation declarations
 static void layx_calc_size(layx_context *ctx, layx_id item, int dim);
@@ -189,25 +193,48 @@ layx_id layx_items_capacity(layx_context *ctx)
 
 layx_id layx_item(layx_context *ctx)
 {
-    layx_id idx = ctx->count++;
-    if (idx >= ctx->capacity) {
-        ctx->capacity = ctx->capacity < 1 ? 32 : (ctx->capacity * 4);
-        const size_t item_size = sizeof(layx_item_t) + sizeof(layx_vec4);
-        ctx->items = (layx_item_t*)LAYX_REALLOC(ctx->items, ctx->capacity * item_size);
-        const layx_item_t *past_last = ctx->items + ctx->capacity;
-        ctx->rects = (layx_vec4*)past_last;
+    layx_id idx;
+    layx_item_t *item;
+    
+    // 优先从空闲链表分配
+    if (ctx->free_list_head != LAYX_INVALID_ID) {
+        idx = ctx->free_list_head;
+        item = layx_get_item(ctx, idx);
+        ctx->free_list_head = item->next_sibling;  // 从 free_list 中取出
+        
+        // 初始化 item 数据
+        LAYX_MEMSET(item, 0, sizeof(layx_item_t));
+        item->parent = LAYX_INVALID_ID;
+        item->first_child = LAYX_INVALID_ID;
+        item->next_sibling = LAYX_INVALID_ID;
+        item->min_size[0] = 0; item->min_size[1] = 0;
+        item->max_size[0] = 0; item->max_size[1] = 0;
+        item->flex_grow = 0;
+        item->flex_shrink = 1;
+        item->flex_basis = 0;
+        LAYX_MEMSET(&ctx->rects[idx], 0, sizeof(layx_vec4));
+    } else {
+        // 从数组末尾分配
+        idx = ctx->count++;
+        if (idx >= ctx->capacity) {
+            ctx->capacity = ctx->capacity < 1 ? 32 : (ctx->capacity * 4);
+            const size_t item_size = sizeof(layx_item_t) + sizeof(layx_vec4);
+            ctx->items = (layx_item_t*)LAYX_REALLOC(ctx->items, ctx->capacity * item_size);
+            const layx_item_t *past_last = ctx->items + ctx->capacity;
+            ctx->rects = (layx_vec4*)past_last;
+        }
+        item = layx_get_item(ctx, idx);
+        LAYX_MEMSET(item, 0, sizeof(layx_item_t));
+        item->parent = LAYX_INVALID_ID;
+        item->first_child = LAYX_INVALID_ID;
+        item->next_sibling = LAYX_INVALID_ID;
+        item->min_size[0] = 0; item->min_size[1] = 0;
+        item->max_size[0] = 0; item->max_size[1] = 0;
+        item->flex_grow = 0;
+        item->flex_shrink = 1;  // CSS规范: flex-shrink默认为1
+        item->flex_basis = 0;
+        LAYX_MEMSET(&ctx->rects[idx], 0, sizeof(layx_vec4));
     }
-    layx_item_t *item = layx_get_item(ctx, idx);
-    LAYX_MEMSET(item, 0, sizeof(layx_item_t));
-    item->parent = LAYX_INVALID_ID;
-    item->first_child = LAYX_INVALID_ID;
-    item->next_sibling = LAYX_INVALID_ID;
-    item->min_size[0] = 0; item->min_size[1] = 0;
-    item->max_size[0] = 0; item->max_size[1] = 0;
-    item->flex_grow = 0;
-    item->flex_shrink = 1;  // CSS规范: flex-shrink默认为1
-    item->flex_basis = 0;
-    LAYX_MEMSET(&ctx->rects[idx], 0, sizeof(layx_vec4));
     return idx;
 }
 
@@ -288,6 +315,75 @@ void layx_prepend(layx_context *ctx, layx_id parent, layx_id new_child)
     pparent->first_child = new_child;
     pchild->flags |= LAYX_ITEM_INSERTED;
     pchild->next_sibling = old_child;
+}
+
+void layx_remove(layx_context *ctx, layx_id item)
+{
+    LAYX_ASSERT(ctx != NULL);
+    LAYX_ASSERT(item != LAYX_INVALID_ID && item < ctx->count);
+    
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    layx_id parent_id = pitem->parent;
+    
+    // 如果元素未插入到任何父元素中，直接返回
+    if (parent_id == LAYX_INVALID_ID) {
+        return;
+    }
+    
+    layx_item_t *pparent = layx_get_item(ctx, parent_id);
+    
+    // 从父元素的子节点链中移除
+    if (pparent->first_child == item) {
+        // 元素是父元素的第一个子节点
+        pparent->first_child = pitem->next_sibling;
+    } else {
+        // 查找前一个兄弟节点
+        layx_id prev_child = pparent->first_child;
+        layx_item_t *pprev = NULL;
+        
+        while (prev_child != LAYX_INVALID_ID) {
+            pprev = layx_get_item(ctx, prev_child);
+            if (pprev->next_sibling == item) {
+                // 找到了前一个兄弟节点，更新其 next_sibling
+                pprev->next_sibling = pitem->next_sibling;
+                break;
+            }
+            prev_child = pprev->next_sibling;
+        }
+    }
+    
+    // 清除插入标志和重置父元素引用
+    pitem->flags &= ~LAYX_ITEM_INSERTED;
+    pitem->parent = LAYX_INVALID_ID;
+}
+
+void layx_destroy_item(layx_context *ctx, layx_id item)
+{
+    LAYX_ASSERT(ctx != NULL);
+    LAYX_ASSERT(item != LAYX_INVALID_ID && item < ctx->count);
+    
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    
+    // 先从父元素中移除（如果有父元素）
+    if (pitem->parent != LAYX_INVALID_ID) {
+        layx_remove(ctx, item);
+    }
+    
+    // 递归销毁所有子元素
+    layx_id child = pitem->first_child;
+    while (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        layx_id next_child = pchild->next_sibling;
+        layx_destroy_item(ctx, child);
+        child = next_child;
+    }
+    
+    // 将 item 加入空闲链表
+    pitem->first_child = LAYX_INVALID_ID;
+    pitem->next_sibling = ctx->free_list_head;
+    pitem->parent = LAYX_INVALID_ID;
+    pitem->flags = 0;
+    ctx->free_list_head = item;
 }
 
 // Display property

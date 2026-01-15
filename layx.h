@@ -140,6 +140,7 @@ typedef struct layx_context {
     layx_id capacity;
     layx_id count;
     layx_screen_to_local_fn screen_to_local_fn;
+    layx_id free_list_head;  // 空闲链表头，用于回收已销毁的 item
 } layx_context;
 
 // Display property
@@ -291,6 +292,8 @@ LAYX_EXPORT int layx_is_inserted(layx_context *ctx, layx_id child);
 LAYX_EXPORT void layx_append(layx_context *ctx, layx_id parent, layx_id child);
 LAYX_EXPORT void layx_insert_after(layx_context *ctx, layx_id earlier, layx_id later);
 LAYX_EXPORT void layx_prepend(layx_context *ctx, layx_id parent, layx_id new_child);
+LAYX_EXPORT void layx_remove(layx_context *ctx, layx_id item);
+LAYX_EXPORT void layx_destroy_item(layx_context *ctx, layx_id item);
 
 // Display property
 LAYX_EXPORT void layx_set_display(layx_context *ctx, layx_id item, layx_display display);

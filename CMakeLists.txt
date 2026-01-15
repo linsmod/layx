@@ -68,6 +68,12 @@ add_executable(test_margin_merge
 )
 target_link_libraries(test_margin_merge layx)
 
+# Destroy item test
+add_executable(test_destroy
+    test_destroy.c
+)
+target_link_libraries(test_destroy layx)
+
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_layout_patterns PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -79,6 +85,7 @@ target_include_directories(test_scroll_max PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_display_types PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_hit_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_margin_merge PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test_destroy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 设置编译选项
 if(MSVC)
@@ -101,6 +108,7 @@ else()
     target_compile_options(test_display_types PRIVATE -Wall -Wextra)
     target_compile_options(test_hit_test PRIVATE -Wall -Wextra)
     target_compile_options(test_margin_merge PRIVATE -Wall -Wextra)
+    target_compile_options(test_destroy PRIVATE -Wall -Wextra)
 endif()
 
 # 使用生成器表达式来获取可执行文件的完整路径
@@ -125,7 +133,9 @@ add_custom_target(tests
     COMMAND $<TARGET_FILE:test_hit_test>
     COMMAND echo "Running test_margin_merge..."
     COMMAND $<TARGET_FILE:test_margin_merge>
-    DEPENDS test_layx test_layout_patterns test_defaults test_block_margin test_flex_margin test_scroll test_scroll_max test_display_types test_hit_test test_margin_merge
+    COMMAND echo "Running test_destroy..."
+    COMMAND $<TARGET_FILE:test_destroy>
+    DEPENDS test_layx test_layout_patterns test_defaults test_block_margin test_flex_margin test_scroll test_scroll_max test_display_types test_hit_test test_margin_merge test_destroy
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all layout tests"
 )
