@@ -1294,25 +1294,24 @@ void layx_arrange_stacked(
             // Check if item has flex-grow
             int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
 
-            // 设置元素起始位置（相对于父容器内容区域的margin位置）
-            ix0 = (layx_scalar)x;
+            // 设置元素起始位置（包含起始margin）
+            ix0 = (layx_scalar)(x + child_margins[dim]);
 
-            // 计算 x1：元素结束位置（相对于父容器内容区域的结束margin位置）
-            x += (float)child_margins[dim];  // 加上元素的起始margin
+            // 计算 x1：元素结束位置（不包含结束margin）
             if (has_flex_grow)
-                x1 = x + filler;  // flex-grow元素使用filler作为宽度
+                x1 = x + child_margins[dim] + filler;  // flex-grow元素使用filler作为宽度
             else {
                 // 计算该元素的压缩量（根据flex-shrink权重）
                 layx_scalar child_size = (float)child_rect[2 + dim];
-                
+
                 // 计算该元素的内容最小尺寸（不能小于文本或子元素所需空间）
                 layx_scalar min_content_size = 0;
-                
+
                 // 如果是文本节点，测量文本尺寸作为最小内容尺寸
                 if (pchild->measure_text_fn) {
                     float text_width = 0, text_height = 0;
                     // 计算文本的最小尺寸（不需要换行）
-                    pchild->measure_text_fn(pchild->measure_text_user_data, 0, 0.0f, 
+                    pchild->measure_text_fn(pchild->measure_text_user_data, 0, 0.0f,
                                          &text_width, &text_height);
                     // 根据当前维度选择宽度或高度
                     min_content_size = (dim == 0) ? text_width : text_height;
@@ -1324,7 +1323,7 @@ void layx_arrange_stacked(
                         layx_item_t *pgrand = layx_get_item(ctx, grandchild);
                         layx_vec4 grand_rect = ctx->rects[grandchild];
                         // 子元素在该维度的总占用：位置 + 尺寸 + 边距
-                        layx_scalar grand_space = grand_rect[dim] + grand_rect[2 + dim] + 
+                        layx_scalar grand_space = grand_rect[dim] + grand_rect[2 + dim] +
                                                    pgrand->margins[dim] + pgrand->margins[wdim];
                         // 取最大值作为最小内容尺寸
                         if (grand_space > min_content_size) {
@@ -1333,11 +1332,11 @@ void layx_arrange_stacked(
                         grandchild = pgrand->next_sibling;
                     }
                 }
-                
+
                 // 加上padding和border
                 min_content_size += pchild->padding[dim] + pchild->padding[wdim] +
                                 pchild->border[dim] + pchild->border[wdim];
-                
+
                 // 如果空间不足且总shrink权重>0，根据flex-shrink进行压缩
                 // 重要：flex-shrink 只在 flex 容器中生效，BLOCK 容器不压缩子项
                 if (is_flex_container && extra_space < 0 && total_shrink_factor > 0.0f && pchild->flex_shrink > 0.0f) {
@@ -1347,7 +1346,7 @@ void layx_arrange_stacked(
                     float shrink_amount = (float)extra_space * shrink_ratio;
                     // 计算压缩后的尺寸
                     float shrunk_size = (float)child_size + shrink_amount;
-                    
+
                     // 应用 min/max 约束
                     float constrained_size = shrunk_size;
                     if (dim == 0 && pchild->min_size[0] > 0) {
@@ -1360,13 +1359,13 @@ void layx_arrange_stacked(
                     } else if (dim == 1 && pchild->max_size[1] > 0) {
                         constrained_size = layx_float_min(constrained_size, (float)pchild->max_size[1]);
                     }
-                    
+
                     // 确保不小于内容最小尺寸
-                    x1 = x + layx_float_max((float)min_content_size, constrained_size);
+                    x1 = x + child_margins[dim] + layx_float_max((float)min_content_size, constrained_size);
                 } else {
                     // 不需要压缩，使用原始尺寸，但要确保不小于内容最小尺寸
                     float final_size = (float)child_rect[2 + dim];
-                    
+
                     // 应用 min/max 约束
                     if (dim == 0 && pchild->min_size[0] > 0) {
                         final_size = layx_float_max(final_size, (float)pchild->min_size[0]);
@@ -1378,13 +1377,12 @@ void layx_arrange_stacked(
                     } else if (dim == 1 && pchild->max_size[1] > 0) {
                         final_size = layx_float_min(final_size, (float)pchild->max_size[1]);
                     }
-                    
+
                     // 确保不小于内容最小尺寸
-                    x1 = x + layx_float_max((float)min_content_size, final_size);
+                    x1 = x + child_margins[dim] + layx_float_max((float)min_content_size, final_size);
                 }
             }
 
-            ix0 = (layx_scalar)x;
             if (wrap)
                 ix1 = (layx_scalar)layx_float_min(max_x2 - (float)child_margins[wdim], x1);
             else
@@ -1392,6 +1390,7 @@ void layx_arrange_stacked(
             child_rect[dim] = ix0;
             child_rect[dim + 2] = ix1 - ix0;
             ctx->rects[child] = child_rect;
+            x = x1 + (float)child_margins[wdim];  // 加上结束margin，为下一个子元素做准备
             child = pchild->next_sibling;
             extra_margin = spacer;
         }
