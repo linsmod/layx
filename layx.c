@@ -1269,7 +1269,7 @@ void layx_arrange_stacked(
 
         float x = (float)content_offset;
         float x1;
-        
+
         child = start_child;
         while (child != end_child) {
             // Apply spacer for first item too (for SPACE_AROUND/EVENLY with single item)
@@ -1293,10 +1293,14 @@ void layx_arrange_stacked(
 
             // Check if item has flex-grow
             int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
-            
-            x += (float)child_rect[dim] + extra_margin;
+
+            // 设置元素起始位置（相对于父容器内容区域的margin位置）
+            ix0 = (layx_scalar)x;
+
+            // 计算 x1：元素结束位置（相对于父容器内容区域的结束margin位置）
+            x += (float)child_margins[dim];  // 加上元素的起始margin
             if (has_flex_grow)
-                x1 = x + filler;
+                x1 = x + filler;  // flex-grow元素使用filler作为宽度
             else {
                 // 计算该元素的压缩量（根据flex-shrink权重）
                 layx_scalar child_size = (float)child_rect[2 + dim];
@@ -1388,7 +1392,6 @@ void layx_arrange_stacked(
             child_rect[dim] = ix0;
             child_rect[dim + 2] = ix1 - ix0;
             ctx->rects[child] = child_rect;
-            x = x1 + (float)child_margins[wdim];
             child = pchild->next_sibling;
             extra_margin = spacer;
         }

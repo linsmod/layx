@@ -74,6 +74,18 @@ add_executable(test_destroy
 )
 target_link_libraries(test_destroy layx)
 
+# Last child margin test
+add_executable(test_last_child_margin
+    test_last_child_margin.c
+)
+target_link_libraries(test_last_child_margin layx)
+
+# Last child margin advanced test
+add_executable(test_last_child_margin_advanced
+    test_last_child_margin_advanced.c
+)
+target_link_libraries(test_last_child_margin_advanced layx)
+
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_layout_patterns PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -86,6 +98,8 @@ target_include_directories(test_display_types PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_include_directories(test_hit_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_margin_merge PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_destroy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test_last_child_margin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test_last_child_margin_advanced PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 设置编译选项
 if(MSVC)
@@ -109,6 +123,8 @@ else()
     target_compile_options(test_hit_test PRIVATE -Wall -Wextra)
     target_compile_options(test_margin_merge PRIVATE -Wall -Wextra)
     target_compile_options(test_destroy PRIVATE -Wall -Wextra)
+    target_compile_options(test_last_child_margin PRIVATE -Wall -Wextra)
+    target_compile_options(test_last_child_margin_advanced PRIVATE -Wall -Wextra)
 endif()
 
 # 使用生成器表达式来获取可执行文件的完整路径
