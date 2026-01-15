@@ -377,9 +377,6 @@ LAYX_EXPORT void layx_set_margin_top(layx_context *ctx, layx_id item, layx_scala
 LAYX_EXPORT void layx_set_margin_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_margin_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_margin_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_margin_trbl(layx_context *ctx, layx_id item,
-                                layx_scalar top, layx_scalar right,
-                                layx_scalar bottom, layx_scalar left);
 LAYX_EXPORT void layx_set_margin_ltrb(layx_context *ctx, layx_id item,
                                 layx_scalar left, layx_scalar top,
                                 layx_scalar right, layx_scalar bottom);
@@ -389,9 +386,6 @@ LAYX_EXPORT void layx_set_padding_top(layx_context *ctx, layx_id item, layx_scal
 LAYX_EXPORT void layx_set_padding_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_padding_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_padding_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_padding_trbl(layx_context *ctx, layx_id item,
-                                 layx_scalar top, layx_scalar right,
-                                 layx_scalar bottom, layx_scalar left);
 LAYX_EXPORT void layx_set_padding_ltrb(layx_context *ctx, layx_id item,
                                  layx_scalar left, layx_scalar top,
                                  layx_scalar right, layx_scalar bottom);
@@ -401,9 +395,6 @@ LAYX_EXPORT void layx_set_border_top(layx_context *ctx, layx_id item, layx_scala
 LAYX_EXPORT void layx_set_border_right(layx_context *ctx, layx_id item, layx_scalar right);
 LAYX_EXPORT void layx_set_border_bottom(layx_context *ctx, layx_id item, layx_scalar bottom);
 LAYX_EXPORT void layx_set_border_left(layx_context *ctx, layx_id item, layx_scalar left);
-LAYX_EXPORT void layx_set_border_trbl(layx_context *ctx, layx_id item,
-                                 layx_scalar top, layx_scalar right,
-                                 layx_scalar bottom, layx_scalar left);
 LAYX_EXPORT void layx_set_border_ltrb(layx_context *ctx, layx_id item,
                                  layx_scalar left, layx_scalar top,
                                  layx_scalar right, layx_scalar bottom);

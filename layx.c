@@ -593,17 +593,6 @@ void layx_set_margin_left(layx_context *ctx, layx_id item, layx_scalar left)
     pitem->margins[0] = left;
 }
 
-void layx_set_margin_trbl(layx_context *ctx, layx_id item,
-                            layx_scalar top, layx_scalar right,
-                            layx_scalar bottom, layx_scalar left)
-{
-    layx_item_t *pitem = layx_get_item(ctx, item);
-    pitem->margins[1] = top;
-    pitem->margins[2] = right;
-    pitem->margins[3] = bottom;
-    pitem->margins[0] = left;
-}
-
 void layx_set_margin_ltrb(layx_context *ctx, layx_id item,
                             layx_scalar left, layx_scalar top,
                             layx_scalar right, layx_scalar bottom)
@@ -648,17 +637,6 @@ void layx_set_padding_left(layx_context *ctx, layx_id item, layx_scalar left)
     pitem->padding[0] = left;
 }
 
-void layx_set_padding_trbl(layx_context *ctx, layx_id item,
-                             layx_scalar top, layx_scalar right,
-                             layx_scalar bottom, layx_scalar left)
-{
-    layx_item_t *pitem = layx_get_item(ctx, item);
-    pitem->padding[1] = top;
-    pitem->padding[2] = right;
-    pitem->padding[3] = bottom;
-    pitem->padding[0] = left;
-}
-
 void layx_set_padding_ltrb(layx_context *ctx, layx_id item,
                              layx_scalar left, layx_scalar top,
                              layx_scalar right, layx_scalar bottom)
@@ -700,17 +678,6 @@ void layx_set_border_bottom(layx_context *ctx, layx_id item, layx_scalar bottom)
 void layx_set_border_left(layx_context *ctx, layx_id item, layx_scalar left)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    pitem->border[0] = left;
-}
-
-void layx_set_border_trbl(layx_context *ctx, layx_id item,
-                             layx_scalar top, layx_scalar right,
-                             layx_scalar bottom, layx_scalar left)
-{
-    layx_item_t *pitem = layx_get_item(ctx, item);
-    pitem->border[1] = top;
-    pitem->border[2] = right;
-    pitem->border[3] = bottom;
     pitem->border[0] = left;
 }
 
@@ -807,21 +774,21 @@ void layx_apply_style(layx_context *ctx, layx_id item, const layx_style *style)
     // Box model
     if (style->margin_top != 0 || style->margin_right != 0 || 
         style->margin_bottom != 0 || style->margin_left != 0) {
-        layx_set_margin_trbl(ctx, item, 
-                            style->margin_top, style->margin_right,
-                            style->margin_bottom, style->margin_left);
+        layx_set_margin_ltrb(ctx, item,
+                             style->margin_left, style->margin_top,
+                             style->margin_right, style->margin_bottom);
     }
     if (style->padding_top != 0 || style->padding_right != 0 || 
         style->padding_bottom != 0 || style->padding_left != 0) {
-        layx_set_padding_trbl(ctx, item,
-                             style->padding_top, style->padding_right,
-                             style->padding_bottom, style->padding_left);
+        layx_set_padding_ltrb(ctx, item,
+                             style->padding_left, style->padding_top,
+                             style->padding_right, style->padding_bottom);
     }
     if (style->border_top != 0 || style->border_right != 0 || 
         style->border_bottom != 0 || style->border_left != 0) {
-        layx_set_border_trbl(ctx, item,
-                             style->border_top, style->border_right,
-                             style->border_bottom, style->border_left);
+        layx_set_border_ltrb(ctx, item,
+                             style->border_left, style->border_top,
+                             style->border_right, style->border_bottom);
     }
     
     // Flex item properties

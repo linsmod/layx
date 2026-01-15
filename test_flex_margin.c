@@ -112,7 +112,7 @@ void test_flex_column_margin_accumulation(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 20, 0, 0, 0);  // 上边距20
+    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 0);  // 上边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -161,19 +161,19 @@ void test_flex_column_multiple_margins(void) {
     // 创建3个子元素，每个都有不同的 margin
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_trbl(&ctx, child1, 10, 0, 15, 0);  // 上10，下15
+    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 15);  // 上10，下15
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 20, 0, 10, 0);  // 上20，下10
+    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 10);  // 上20，下10
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
-    layx_set_margin_trbl(&ctx, child3, 15, 0, 5, 0);   // 上15，下5
+    layx_set_margin_ltrb(&ctx, child3, 0, 15, 0, 5);   // 上15，下5
     layx_set_flex_shrink(&ctx, child3, 0);  // 不允许收缩
     layx_append(&ctx, container, child3);
 
@@ -297,7 +297,7 @@ void test_flex_row_margin_accumulation(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 50, 30);
-    layx_set_margin_trbl(&ctx, child2, 0, 0, 0, 20);  // 左边距20
+    layx_set_margin_ltrb(&ctx, child2, 20, 0, 0, 0);  // 左边距20
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -345,13 +345,13 @@ void test_flex_column_container_height(void) {
     // 创建3个子元素，每个高度50，间距20
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_trbl(&ctx, child1, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, child1, 0, 0, 0, 20);
     layx_set_flex_shrink(&ctx, child1, 0);  // 不允许收缩
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, child2, 0, 0, 0, 20);
     layx_set_flex_shrink(&ctx, child2, 0);  // 不允许收缩
     layx_append(&ctx, container, child2);
 
@@ -412,7 +412,7 @@ void test_flex_all_margins(void) {
     // 创建子元素，设置四周 margin
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 50);
-    layx_set_margin_trbl(&ctx, child, 15, 25, 20, 30);  // 上15，右25，下20，左30
+    layx_set_margin_ltrb(&ctx, child, 30, 15, 25, 20);  // 上15，右25，下20，左30
     layx_set_flex_shrink(&ctx, child, 0);  // 不允许收缩
     layx_append(&ctx, container, child);
 

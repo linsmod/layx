@@ -100,7 +100,7 @@ void test_block_margin_accumulation(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 20, 0, 0, 0);  // 上边距20
+    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 0);  // 上边距20
     layx_insert_after(&ctx, child1, child2);
 
     // 运行布局
@@ -144,17 +144,17 @@ void test_block_multiple_margins(void) {
     // 创建3个子元素，每个都有不同的 margin
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_trbl(&ctx, child1, 10, 0, 15, 0);  // 上10，下15
+    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 15);  // 上10，下15
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 20, 0, 10, 0);  // 上20，下10
+    layx_set_margin_ltrb(&ctx, child2, 0, 20, 0, 10);  // 上20，下10
     layx_insert_after(&ctx, child1, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_size(&ctx, child3, 100, 50);
-    layx_set_margin_trbl(&ctx, child3, 15, 0, 5, 0);   // 上15，下5
+    layx_set_margin_ltrb(&ctx, child3, 0, 15, 0, 5);   // 上15，下5
     layx_insert_after(&ctx, child2, child3);
 
     // 运行布局
@@ -210,12 +210,12 @@ void test_block_container_height(void) {
     // 创建3个子元素，每个高度50，间距20
     layx_id child1 = layx_item(&ctx);
     layx_set_size(&ctx, child1, 100, 50);
-    layx_set_margin_trbl(&ctx, child1, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, child1, 0, 0, 0, 20);
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, child2, 0, 0, 0, 20);
     layx_insert_after(&ctx, child1, child2);
 
     layx_id child3 = layx_item(&ctx);
@@ -263,7 +263,7 @@ void test_block_horizontal_alignment(void) {
     // 创建子元素，宽度小于容器
     layx_id child = layx_item(&ctx);
     layx_set_size(&ctx, child, 100, 50);
-    layx_set_margin_trbl(&ctx, child, 0, 0, 0, 0);
+    layx_set_margin_ltrb(&ctx, child, 0, 0, 0, 0);
     layx_append(&ctx, container, child);
 
     // 运行布局
@@ -311,7 +311,7 @@ void test_block_vs_flex_comparison(void) {
     // 为两个容器添加相同的子元素
     layx_id block_child1 = layx_item(&ctx);
     layx_set_size(&ctx, block_child1, 100, 50);
-    layx_set_margin_trbl(&ctx, block_child1, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, block_child1, 0, 0, 0, 20);
     layx_append(&ctx, block_container, block_child1);
 
     layx_id block_child2 = layx_item(&ctx);
@@ -320,7 +320,7 @@ void test_block_vs_flex_comparison(void) {
 
     layx_id flex_child1 = layx_item(&ctx);
     layx_set_size(&ctx, flex_child1, 100, 50);
-    layx_set_margin_trbl(&ctx, flex_child1, 0, 0, 20, 0);
+    layx_set_margin_ltrb(&ctx, flex_child1, 0, 0, 0, 20);
     layx_append(&ctx, flex_container, flex_child1);
 
     layx_id flex_child2 = layx_item(&ctx);

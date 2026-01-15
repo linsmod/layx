@@ -41,19 +41,19 @@ void test_flex_column_margin_merge(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_width(&ctx, child1, 200);
     layx_set_height(&ctx, child1, 50);
-    layx_set_margin_trbl(&ctx, child1, 10, 0, 20, 0);  // margin-bottom=20
+    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 20);  // margin-top=10, margin-bottom=20
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_width(&ctx, child2, 200);
     layx_set_height(&ctx, child2, 50);
-    layx_set_margin_trbl(&ctx, child2, 15, 0, 10, 0);  // margin-top=15, margin-bottom=10
+    layx_set_margin_ltrb(&ctx, child2, 0, 15, 0, 10);  // margin-top=15, margin-bottom=10
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_width(&ctx, child3, 200);
     layx_set_height(&ctx, child3, 50);
-    layx_set_margin_trbl(&ctx, child3, 5, 0, 10, 0);   // margin-top=5
+    layx_set_margin_ltrb(&ctx, child3, 0, 5, 0, 10);   // margin-top=5, margin-bottom=10
     layx_append(&ctx, container, child3);
 
     // 运行布局
@@ -93,19 +93,19 @@ void test_block_margin_merge(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_width(&ctx, child1, 200);
     layx_set_height(&ctx, child1, 50);
-    layx_set_margin_trbl(&ctx, child1, 10, 0, 20, 0);  // margin-bottom=20
+    layx_set_margin_ltrb(&ctx, child1, 0, 10, 0, 20);  // margin-top=10, margin-bottom=20
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_width(&ctx, child2, 200);
     layx_set_height(&ctx, child2, 50);
-    layx_set_margin_trbl(&ctx, child2, 15, 0, 10, 0);  // margin-top=15, margin-bottom=10
+    layx_set_margin_ltrb(&ctx, child2, 0, 15, 0, 10);  // margin-top=15, margin-bottom=10
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_width(&ctx, child3, 200);
     layx_set_height(&ctx, child3, 50);
-    layx_set_margin_trbl(&ctx, child3, 5, 0, 10, 0);   // margin-top=5
+    layx_set_margin_ltrb(&ctx, child3, 0, 5, 0, 10);   // margin-top=5, margin-bottom=10
     layx_append(&ctx, container, child3);
 
     // 运行布局
@@ -141,19 +141,19 @@ void test_inline_margin_merge(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_width(&ctx, child1, 100);
     layx_set_height(&ctx, child1, 50);
-    layx_set_margin_trbl(&ctx, child1, 0, 20, 0, 0);  // margin-right=20
+    layx_set_margin_ltrb(&ctx, child1, 0, 0, 20, 0);  // margin-right=20
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_width(&ctx, child2, 100);
     layx_set_height(&ctx, child2, 50);
-    layx_set_margin_trbl(&ctx, child2, 0, 10, 0, 15);  // margin-left=15, margin-right=10
+    layx_set_margin_ltrb(&ctx, child2, 15, 0, 10, 0);  // margin-left=15, margin-right=10
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_width(&ctx, child3, 100);
     layx_set_height(&ctx, child3, 50);
-    layx_set_margin_trbl(&ctx, child3, 0, 0, 0, 5);    // margin-left=5
+    layx_set_margin_ltrb(&ctx, child3, 5, 0, 0, 0);    // margin-left=5
     layx_append(&ctx, container, child3);
 
     // 运行布局
@@ -207,19 +207,19 @@ void test_inline_block_margin_merge(void) {
     layx_id child1 = layx_item(&ctx);
     layx_set_width(&ctx, child1, 100);
     layx_set_height(&ctx, child1, 50);
-    layx_set_margin_trbl(&ctx, child1, 0, 20, 0, 0);  // margin-right=20
+    layx_set_margin_ltrb(&ctx, child1, 0, 0, 20, 0);  // margin-right=20
     layx_append(&ctx, container, child1);
 
     layx_id child2 = layx_item(&ctx);
     layx_set_width(&ctx, child2, 100);
     layx_set_height(&ctx, child2, 50);
-    layx_set_margin_trbl(&ctx, child2, 0, 10, 0, 15);  // margin-left=15, margin-right=10
+    layx_set_margin_ltrb(&ctx, child2, 15, 0, 10, 0);  // margin-left=15, margin-right=10
     layx_append(&ctx, container, child2);
 
     layx_id child3 = layx_item(&ctx);
     layx_set_width(&ctx, child3, 100);
     layx_set_height(&ctx, child3, 50);
-    layx_set_margin_trbl(&ctx, child3, 0, 0, 0, 5);    // margin-left=5
+    layx_set_margin_ltrb(&ctx, child3, 5, 0, 0, 0);    // margin-left=5
     layx_append(&ctx, container, child3);
 
     // 运行布局

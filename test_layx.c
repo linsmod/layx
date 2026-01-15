@@ -46,7 +46,7 @@ void test_basic_layout_structure(void) {
     layx_set_size(&ctx, sidebar, 150, 0);
     layx_set_display(&ctx, sidebar, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, sidebar, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_margin_trbl(&ctx, sidebar, 0, 10, 0, 0);
+    layx_set_margin_ltrb(&ctx, sidebar, 0, 0, 10, 0);
     layx_append(&ctx, root, sidebar);
 
     // 创建主内容区
@@ -100,18 +100,18 @@ void test_nested_layout(void) {
     layx_set_size(&ctx, sidebar, 150, 0);
     layx_set_display(&ctx, sidebar, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, sidebar, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_margin_trbl(&ctx, sidebar, 0, 10, 0, 0);
+    layx_set_margin_ltrb(&ctx, sidebar, 0, 0, 10, 0);
     layx_append(&ctx, root, sidebar);
 
     // 创建侧边栏按钮
     layx_id btn1 = layx_item(&ctx);
     layx_set_size(&ctx, btn1, 0, 40);
-    layx_set_margin_trbl(&ctx, btn1, 0, 0, 5, 0);
+    layx_set_margin_ltrb(&ctx, btn1, 0, 0, 0, 5);
     layx_append(&ctx, sidebar, btn1);
 
     layx_id btn2 = layx_item(&ctx);
     layx_set_size(&ctx, btn2, 0, 40);
-    layx_set_margin_trbl(&ctx, btn2, 0, 0, 5, 0);
+    layx_set_margin_ltrb(&ctx, btn2, 0, 0, 0, 5);
     layx_append(&ctx, sidebar, btn2);
 
     layx_id btn3 = layx_item(&ctx);
@@ -127,7 +127,7 @@ void test_nested_layout(void) {
     // 创建header
     layx_id header = layx_item(&ctx);
     layx_set_size(&ctx, header, 0, 60);
-    layx_set_margin_trbl(&ctx, header, 0, 0, 10, 0);
+    layx_set_margin_ltrb(&ctx, header, 0, 0, 0, 10);
     layx_append(&ctx, content, header);
 
     // 运行布局
@@ -178,18 +178,18 @@ void test_complex_layout(void) {
     layx_set_size(&ctx, sidebar, 150, 0);
     layx_set_display(&ctx, sidebar, LAYX_DISPLAY_FLEX);
     layx_set_flex_direction(&ctx, sidebar, LAYX_FLEX_DIRECTION_COLUMN);
-    layx_set_margin_trbl(&ctx, sidebar, 0, 10, 0, 0);
+    layx_set_margin_ltrb(&ctx, sidebar, 0, 0, 10, 0);
     layx_append(&ctx, root, sidebar);
 
     // 创建3个侧边栏按钮
     layx_id btn1 = layx_item(&ctx);
     layx_set_size(&ctx, btn1, 0, 40);
-    layx_set_margin_trbl(&ctx, btn1, 0, 0, 5, 0);
+    layx_set_margin_ltrb(&ctx, btn1, 0, 0, 0, 5);
     layx_append(&ctx, sidebar, btn1);
 
     layx_id btn2 = layx_item(&ctx);
     layx_set_size(&ctx, btn2, 0, 40);
-    layx_set_margin_trbl(&ctx, btn2, 0, 0, 5, 0);
+    layx_set_margin_ltrb(&ctx, btn2, 0, 0, 0, 5);
     layx_append(&ctx, sidebar, btn2);
 
     layx_id btn3 = layx_item(&ctx);
@@ -205,7 +205,7 @@ void test_complex_layout(void) {
     // 创建header
     layx_id header = layx_item(&ctx);
     layx_set_size(&ctx, header, 0, 60);
-    layx_set_margin_trbl(&ctx, header, 0, 0, 10, 0);
+    layx_set_margin_ltrb(&ctx, header, 0, 0, 0, 10);
     layx_append(&ctx, content, header);
 
     // 创建body
@@ -217,12 +217,12 @@ void test_complex_layout(void) {
     // 创建2个卡片
     layx_id card1 = layx_item(&ctx);
     layx_set_size(&ctx, card1, 0, 100);
-    layx_set_margin_trbl(&ctx, card1, 0, 0, 10, 0);
+    layx_set_margin_ltrb(&ctx, card1, 0, 0, 0, 10);
     layx_append(&ctx, body, card1);
 
     layx_id card2 = layx_item(&ctx);
     layx_set_size(&ctx, card2, 0, 100);
-    layx_set_margin_trbl(&ctx, card2, 0, 0, 10, 0);
+    layx_set_margin_ltrb(&ctx, card2, 0, 0, 0, 10);
     layx_append(&ctx, body, card2);
 
     // 运行布局
@@ -303,7 +303,7 @@ void test_margin_correctness(void) {
 
     layx_id child2 = layx_item(&ctx);
     layx_set_size(&ctx, child2, 100, 50);
-    layx_set_margin_trbl(&ctx, child2, 15, 0, 0, 0);
+    layx_set_margin_ltrb(&ctx, child2, 0, 15, 0, 0);
     layx_append(&ctx, container, child2);
 
     // 运行布局
