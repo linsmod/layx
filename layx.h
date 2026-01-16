@@ -158,10 +158,11 @@ typedef struct layx_context {
 
 // Display property
 typedef enum layx_display {
-    LAYX_DISPLAY_BLOCK = 0,
-    LAYX_DISPLAY_FLEX = 1,
-    LAYX_DISPLAY_INLINE = 2,
-    LAYX_DISPLAY_INLINE_BLOCK = 3
+    LAYX_DISPLAY_NONE = 0,
+    LAYX_DISPLAY_BLOCK = 1,
+    LAYX_DISPLAY_FLEX = 2,
+    LAYX_DISPLAY_INLINE = 3,
+    LAYX_DISPLAY_INLINE_BLOCK = 4
 } layx_display;
 
 // Flex direction
@@ -181,7 +182,7 @@ typedef enum layx_flex_wrap {
 } layx_flex_wrap;
 
 // Justify content (bits 6-8)
-// alignment along the x axis
+// alignment along the main-axis
 typedef enum layx_justify_content {
     LAYX_JUSTIFY_FLEX_START = 0x000,
     LAYX_JUSTIFY_CENTER = 0x0040,
@@ -192,7 +193,7 @@ typedef enum layx_justify_content {
 } layx_justify_content;
 
 // Align items (bits 9-11)
-// alignment along the y axis
+// alignment along the cross-axis
 typedef enum layx_align_items {
     LAYX_ALIGN_ITEMS_STRETCH = 0x0000,
     LAYX_ALIGN_ITEMS_FLEX_START = 0x0200,
@@ -574,7 +575,7 @@ LAYX_STATIC_INLINE int layx_hit_test(const layx_context *ctx, layx_id root_id, l
     return layx_point_in_rect(test_x, test_y, rect);
 }
 
-LAYX_STATIC_INLINE void layx_get_content_rect_xywh(
+LAYX_STATIC_INLINE void layx_get_rect_inner_xywh(
         const layx_context *ctx, layx_id id,
         layx_scalar *x, layx_scalar *y, layx_scalar *width, layx_scalar *height)
 {

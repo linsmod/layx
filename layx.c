@@ -154,8 +154,8 @@ void layx_reset_context(layx_context *ctx)
 }
 
 // Layout calculation declarations
-static void layx_calc_size(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim);
-static void layx_arrange(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim);
+static void layx_calc_size(layx_context *ctx, layx_id item, int dim);
+static void layx_arrange(layx_context *ctx, layx_id item, int dim);
 
 void layx_run_context(layx_context *ctx)
 {
@@ -268,12 +268,12 @@ void layx_run_item(layx_context *ctx, layx_id item)
     LAYX_ASSERT(ctx != NULL);
     
     // 横向计算尺寸和排列
-    layx_calc_size(ctx, item, LAYX_INVALID_ID,0);
-    layx_arrange(ctx, item, LAYX_INVALID_ID,0);
+    layx_calc_size(ctx, item,0);
+    layx_arrange(ctx, item,0);
     
     // 纵向计算尺寸和排列（会递归计算内容尺寸和滚动条）
-    layx_calc_size(ctx, item, LAYX_INVALID_ID,1);
-    layx_arrange(ctx, item,LAYX_INVALID_ID, 1);
+    layx_calc_size(ctx, item,1);
+    layx_arrange(ctx, item,1);
     
     // 计算滚动相关字段
     layx_update_scroll_fields(ctx, item);
@@ -932,15 +932,11 @@ layx_scalar layx_get_internal_space(
 // 当布局子元素时，用于获取父元素内容区域(content-box)的起始位置，用于作为子元素布局的基准点。
 static LAYX_FORCE_INLINE
 layx_scalar layx_get_content_offset(
-        layx_context *ctx, layx_id item,layx_id prev_sibling, int dim)
+        layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_vec4 rect = ctx->rects[item]; // margin-boxing
-    if (prev_sibling != LAYX_INVALID_ID) {
-        layx_item_t *pprev = layx_get_item(ctx, prev_sibling);
-        layx_scalar margin = layx_float_max((float)pprev->margin_trbl[END_SIDE(dim)],(float)pitem->margin_trbl[START_SIDE(dim)]);
-        return rect[POINT_DIM(dim)] + pitem->padding_trbl[START_SIDE(dim)] + pitem->border_trbl[START_SIDE(dim)] + margin;
-    }
+
     // dim 0 or 1: left or top
     return rect[POINT_DIM(dim)] + pitem->padding_trbl[START_SIDE(dim)] + pitem->border_trbl[START_SIDE(dim)];
 }
@@ -972,49 +968,75 @@ static LAYX_FORCE_INLINE
 layx_scalar layx_calc_stacked_size(
         layx_context *ctx, layx_id item, int dim)
 {
-    layx_item_t *LAYX_RESTRICT pitem = layx_get_item(ctx, item);
+    layx_item_t *pitem = layx_get_item(ctx, item);
     layx_scalar need_size = 0;
     layx_id child = pitem->first_child;
-    layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
-
+    layx_id prev_child = LAYX_INVALID_ID;
+    
     const uint32_t item_flags = pitem->flags;
-    int is_flex_container = layx_is_flex_container(item_flags);
-
+    bool is_flex_container = layx_is_flex_container(item_flags);
+    bool is_vertical = (dim == 1);
+    
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-
-        // 正确处理margin合并：
-        // 对于 flex 容器：margin 不合并，直接相加
-        // 对于 block 容器：margin 合并，取最大值
-        if (prev_child == LAYX_INVALID_ID) {
-            // 第一个子项：累加其起始margin
-            need_size += pchild->margin_trbl[START_SIDE(dim)];
-        } else {
-            // 非第一个子项：累加与上一个子项之间的边距
-            layx_item_t *pprev = layx_get_item(ctx, prev_child);
-            layx_scalar gap;
-            if (is_flex_container) {
-                // Flex 容器：margin 不合并，相邻 margin 相加
-                gap = pprev->margin_trbl[END_SIDE(dim)] + pchild->margin_trbl[START_SIDE(dim)];
+        const layx_vec4 margins = pchild->margin_trbl;
+        
+        // 检查是否为inline元素
+        bool is_inline = (pchild->flags & LAYX_DISPLAY_INLINE) != 0;
+        
+        if (is_inline) {
+            // Inline元素特殊处理
+            if (dim == 0) {
+                // 水平方向：累加宽度和水平margin
+                need_size += rect[SIZE_DIM(dim)] + margins[START_SIDE(dim)] + margins[END_SIDE(dim)];
             } else {
-                // Block 容器：margin 合并，取最大值
-                gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], pchild->margin_trbl[START_SIDE(dim)]);
+                // 垂直方向：inline元素不影响容器高度（由line-height决定）
+                // 这里简单返回0或最小行高
+                if (prev_child == LAYX_INVALID_ID) {
+                    need_size = layx_scalar_max(need_size, rect[SIZE_DIM(dim)]);
+                }
             }
-            need_size += gap;
+        } else {
+            // 块级元素处理（原逻辑）
+            layx_scalar margin_start = margins[START_SIDE(dim)];
+            layx_scalar margin_end = margins[END_SIDE(dim)];
+            
+            if (prev_child == LAYX_INVALID_ID) {
+                need_size += margin_start;
+            } else {
+                layx_item_t *pprev = layx_get_item(ctx, prev_child);
+                layx_scalar prev_margin_end = pprev->margin_trbl[END_SIDE(dim)];
+                
+                if (is_flex_container) {
+                    need_size += prev_margin_end + margin_start;
+                } else {
+                    if (is_vertical) {
+                        need_size += layx_scalar_max(prev_margin_end, margin_start);
+                    } else {
+                        need_size += prev_margin_end + margin_start;
+                    }
+                }
+            }
+            
+            need_size += rect[SIZE_DIM(dim)];
+            
+            prev_child = child;
         }
-
-        // 累加子项尺寸
-        need_size += rect[SIZE_DIM(dim)];
-
-        // 如果是最后一个子项，累加其结束margin
-        if (pchild->next_sibling == LAYX_INVALID_ID) {
-            need_size += pchild->margin_trbl[END_SIDE(dim)];
-        }
-
-        prev_child = child;
+        
         child = pchild->next_sibling;
     }
+    
+    // 最后一个元素的结束margin
+    if (prev_child != LAYX_INVALID_ID) {
+        layx_item_t *plast = layx_get_item(ctx, prev_child);
+        bool is_inline = (plast->flags & LAYX_DISPLAY_INLINE) != 0;
+        
+        if (!is_inline || dim == 0) {  // inline元素只有水平margin
+            need_size += plast->margin_trbl[END_SIDE(dim)];
+        }
+    }
+    
     return need_size;
 }
 
@@ -1045,7 +1067,7 @@ layx_scalar layx_calc_wrapped_overlayed_size(
 // Helper to calculate wrapped stacked size
 static LAYX_FORCE_INLINE
 layx_scalar layx_calc_wrapped_stacked_size(
-        layx_context *ctx, layx_id item, layx_id prev_sibling, int dim)
+        layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *LAYX_RESTRICT pitem = layx_get_item(ctx, item);
     layx_scalar need_size = 0;
@@ -1102,26 +1124,19 @@ layx_scalar layx_calc_wrapped_stacked_size(
 }
 
 // PHASE 1: Calculate size (first pass)
-static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling, int dim)
+static void layx_calc_size(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     uint32_t flags = pitem->flags;
 
     layx_id child = pitem->first_child;
-    layx_id prev = LAYX_INVALID_ID;
     while (child != LAYX_INVALID_ID) {
-        layx_calc_size(ctx, child,prev, dim);
-        layx_item_t *pchild = layx_get_item(ctx, child);
-        prev = child;
-        child = pchild->next_sibling;
+        layx_calc_size(ctx, child, dim);
+        child = layx_next_sibling(ctx, child);
     }
 
     ctx->rects[item][SIZE_DIM(dim)] = pitem->margin_trbl[START_SIDE(dim)];
 
-    layx_scalar result_size;
-    if (pitem->size[dim] != 0) {
-        result_size = pitem->size[dim];
-    } else {
         layx_scalar cal_size;
         layx_flex_direction direction = (layx_flex_direction)(flags & LAYX_FLEX_DIRECTION_MASK);
         layx_display display = layx_get_display_from_flags(flags);
@@ -1134,12 +1149,12 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
             if (is_wrapped) {
                 if (is_row_direction) {
                     if (dim == 0)
-                        cal_size = layx_calc_wrapped_stacked_size(ctx, item, prev_sibling, 0);
+                        cal_size = layx_calc_wrapped_stacked_size(ctx, item, 0);
                     else
                         cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 1);
                 } else {
                     if (dim == 1)
-                        cal_size = layx_calc_wrapped_stacked_size(ctx, item, prev_sibling,1);
+                        cal_size = layx_calc_wrapped_stacked_size(ctx, item,1);
                     else
                         cal_size = layx_calc_wrapped_overlayed_size(ctx, item, 0);
                 }
@@ -1172,8 +1187,14 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
             }
         }
 
-        cal_size += pitem->padding_trbl[START_SIDE(dim)] + pitem->border_trbl[START_SIDE(dim)] 
-                 + pitem->padding_trbl[END_SIDE(dim)] + pitem->border_trbl[END_SIDE(dim)];
+        
+    
+
+    layx_scalar result_size;
+    bool is_fixedsize = pitem->flags & (dim==0?LAYX_SIZE_FIXED_WIDTH:LAYX_SIZE_FIXED_HEIGHT);
+    if(is_fixedsize && pitem->size[dim] > 0) {
+        result_size = pitem->size[dim];
+    }else {
         result_size = cal_size;
     }
 
@@ -1193,6 +1214,8 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
             result_size = pitem->max_size[1];
         }
     }
+    result_size += pitem->padding_trbl[START_SIDE(dim)] + pitem->border_trbl[START_SIDE(dim)] 
+                 + pitem->padding_trbl[END_SIDE(dim)] + pitem->border_trbl[END_SIDE(dim)];
 
     ctx->rects[item][SIZE_DIM(dim)] = result_size;
     // DEBUG: 打印尺寸设置信息
@@ -1201,61 +1224,111 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
            item, dim, first_child != LAYX_INVALID_ID, pitem->size[0], pitem->size[1], SIZE_DIM(dim), result_size);
 }
 
-// Helper to arrange stacked items
+// Helper to arrange a single child in a flex container (with justify-content support)
 static LAYX_FORCE_INLINE
-void layx_arrange_stacked(
-            layx_context *ctx, layx_id item,layx_id prev_sibling, int dim, bool wrap)
+void layx_arrange_flex_container_single_child(
+            layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-
     const uint32_t item_flags = pitem->flags;
-    int is_flex_container = layx_is_flex_container(item_flags);  // 只在 flex 容器中应用 flex-shrink
+    layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
     layx_scalar space = layx_get_internal_space(ctx, item, dim);
-    layx_scalar content_offset = layx_get_content_offset(ctx, item,prev_sibling, dim);
+    layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
 
+    layx_id child = pitem->first_child;
+    if (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        const layx_vec4 child_margins = pchild->margin_trbl;
+        layx_vec4 child_rect = ctx->rects[child];
+        
+        // 获取子元素尺寸
+        float child_width;
+        uint32_t size_fixed_flag = (dim == 0) ? LAYX_SIZE_FIXED_WIDTH : LAYX_SIZE_FIXED_HEIGHT;
+        if (pchild->flags & size_fixed_flag && pchild->size[dim] > 0) {
+            child_width = (float)pchild->size[dim];
+        } else {
+            child_width = (float)child_rect[SIZE_DIM(dim)];
+        }
+        
+        // 根据 justify-content 计算起点
+        float start_pos = 0.0f;
+        
+        switch (justify) {
+        case LAYX_JUSTIFY_FLEX_START:
+            start_pos = 0.0f;
+            break;
+            
+        case LAYX_JUSTIFY_FLEX_END: {
+            float total_child_space = child_width + child_margins[START_SIDE(dim)] + child_margins[END_SIDE(dim)];
+            start_pos = space - total_child_space;
+            break;
+        }
+            
+        case LAYX_JUSTIFY_CENTER: {
+            // 使用直观的居中公式
+            float total_child_space = child_width + child_margins[START_SIDE(dim)] + child_margins[END_SIDE(dim)];
+            start_pos = (space - total_child_space) / 2.0f;
+            break;
+        }
+            
+        case LAYX_JUSTIFY_SPACE_AROUND:
+        case LAYX_JUSTIFY_SPACE_BETWEEN:
+        case LAYX_JUSTIFY_SPACE_EVENLY:
+            // 单个子元素时，居中对齐
+            float total_child_space = child_width + child_margins[START_SIDE(dim)] + child_margins[END_SIDE(dim)];
+            start_pos = (space - total_child_space) / 2.0f;
+            break;
+        }
+        
+        // 计算最终位置
+        float ix0 = (float)content_offset + start_pos + child_margins[START_SIDE(dim)];
+        
+        child_rect[POINT_DIM(dim)] = (layx_scalar)ix0;
+        child_rect[SIZE_DIM(dim)] = (layx_scalar)child_width;
+        ctx->rects[child] = child_rect;
+    }
+}
+
+// Helper to arrange multiple children in a flex container (with flex-wrap and justify-content)
+static LAYX_FORCE_INLINE
+void layx_arrange_flex_container_multiple_children(
+            layx_context *ctx, layx_id item, int dim, bool wrap)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    const uint32_t item_flags = pitem->flags;
+    layx_scalar space = layx_get_internal_space(ctx, item, dim);
+    layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
     float max_x2 = (float)(content_offset + space);
 
-        layx_id start_child = pitem->first_child;
+    layx_id start_child = pitem->first_child;
     while (start_child != LAYX_INVALID_ID) {
         layx_scalar used = 0;
         uint32_t count = 0;
         uint32_t total = 0;
         bool hardbreak = false;
-
-        // 用于计算flex-shrink权重
         float total_shrink_factor = 0.0f;
-
-        LAYX_DEBUG_PRINT("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
 
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
         while (child != LAYX_INVALID_ID) {
             layx_item_t *pchild = layx_get_item(ctx, child);
             const uint32_t child_flags = pchild->flags;
-            const uint32_t fflags = (child_flags & LAYX_SIZE_FIXED_MASK) >> dim;
             const layx_vec4 child_margins = pchild->margin_trbl;
             layx_vec4 child_rect = ctx->rects[child];
-            
-            // Check if item has flex-grow (should fill remaining space)
-            // flex-grow 和 flex-shrink 只在 flex 容器中生效
-            int has_flex_grow = is_flex_container && (pchild->flex_grow > 0);
+
+            int has_flex_grow = (pchild->flex_grow > 0);
 
             layx_scalar extend = used;
             if (has_flex_grow) {
                 ++count;
-                // flex-grow 元素：尺寸（不包含 margin）
                 extend += child_rect[SIZE_DIM(dim)];
             } else {
-                // 非flex-grow 元素：尺寸（不包含 margin）
                 extend += child_rect[SIZE_DIM(dim)];
-
-                // 计算flex-shrink权重（如果flex_shrink > 0，则参与压缩）
-                // 只在 flex 容器中生效
-                if (is_flex_container && pchild->flex_shrink > 0.0f) {
+                if (pchild->flex_shrink > 0.0f) {
                     total_shrink_factor += pchild->flex_shrink;
                 }
             }
-            
+
             if (wrap && (total && ((extend > space) || (child_flags & LAYX_BREAK)))) {
                 end_child = child;
                 hardbreak = (child_flags & LAYX_BREAK) == LAYX_BREAK;
@@ -1274,19 +1347,16 @@ void layx_arrange_stacked(
         float extra_margin = 0.0f;
 
         if (extra_space > 0) {
-            // flex-grow 和 justify-content 只在 flex 容器中生效
-            if (is_flex_container && count > 0)
+            if (count > 0)
                 filler = (float)extra_space / (float)count;
-            else if (is_flex_container && total > 0) {
+            else if (total > 0) {
                 layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
                 switch (justify) {
                 case LAYX_JUSTIFY_SPACE_BETWEEN:
                     if (!wrap || ((end_child != LAYX_INVALID_ID) && !hardbreak)) {
-                        // For non-wrapped or single-line wrapped: distribute space between items
                         if (total > 1) {
                             spacer = (float)extra_space / (float)(total - 1);
                         } else {
-                            // Single item: place at start (FLEX_START)
                             spacer = 0.0f;
                         }
                     }
@@ -1312,184 +1382,196 @@ void layx_arrange_stacked(
         }
 
         float x = (float)content_offset + extra_margin;
-        float x1;
-        layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
+        layx_id prev_child = LAYX_INVALID_ID;
 
         child = start_child;
         while (child != end_child) {
-            // Apply spacer for first item too (for SPACE_AROUND/EVENLY with single item)
             if (spacer != 0 && child == start_child) {
-                // For SPACE_AROUND: apply half spacer (space distributed to both sides)
-                // For SPACE_EVENLY: apply full spacer (first gap of total+1 gaps)
                 layx_justify_content justify = (layx_justify_content)(item_flags & LAYX_JUSTIFY_CONTENT_MASK);
                 if (justify == LAYX_JUSTIFY_SPACE_AROUND) {
                     x += spacer / 2.0f;
                 } else if (justify == LAYX_JUSTIFY_SPACE_EVENLY) {
                     x += spacer;
                 }
-                // For SPACE_BETWEEN: don't apply initial spacer, let extra_margin handle it
             }
-            layx_scalar ix0, ix1;
+
+            layx_scalar ix0, ix1, x1;
             layx_item_t *pchild = layx_get_item(ctx, child);
-            const uint32_t child_flags = pchild->flags;
-            const uint32_t fflags = (child_flags & LAYX_SIZE_FIXED_MASK) >> dim;
             const layx_vec4 child_margins = pchild->margin_trbl;
             layx_vec4 child_rect = ctx->rects[child];
-
-            // Reset child position to 0 before arranging
             child_rect[POINT_DIM(dim)] = 0;
 
-            // Check if item has flex-grow
-            int has_flex_grow = (dim == 0) ? (pchild->flex_grow > 0) : (pchild->flex_grow > 0);
+            int has_flex_grow = (pchild->flex_grow > 0);
 
-            // 正确处理margin合并：
-            // ix0 应该是子元素的内容起始位置（在margin之后）
+            // Flex 容器：margin 不合并，相邻 margin 相加
             if (prev_child == LAYX_INVALID_ID) {
-                // 第一个子项：使用其起始margin
                 ix0 = (layx_scalar)(x + child_margins[START_SIDE(dim)]);
-                LAYX_DEBUG_PRINT("DEBUG: child=%d, prev=INVALID, ix0=x(%.1f)+margin_start(%.1f)=%.1f\n",
-                       child, x, child_margins[START_SIDE(dim)], ix0);
             } else {
-                // 非第一个子项：计算 gap
-                // x 当前位置是上一个子元素的结束位置（不包括margin）
-                // 对于 flex 容器：margin 不合并，直接相加
-                // 对于 block 容器：margin 合并，取最大值
                 layx_item_t *pprev = layx_get_item(ctx, prev_child);
-                layx_scalar gap;
-                if (is_flex_container) {
-                    // Flex 容器：margin 不合并，相邻 margin 相加
-                    gap = pprev->margin_trbl[END_SIDE(dim)] + child_margins[START_SIDE(dim)];
-                } else {
-                    // Block 容器：margin 合并，取最大值
-                    gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], child_margins[START_SIDE(dim)]);
-                }
+                layx_scalar gap = pprev->margin_trbl[END_SIDE(dim)] + child_margins[START_SIDE(dim)];
                 ix0 = (layx_scalar)(x + gap);
-                LAYX_DEBUG_PRINT("DEBUG: child=%d, prev=%d, prev_end_margin=%.1f, curr_start_margin=%.1f, gap=%.1f, ix0=x(%.1f)+gap=%.1f\n",
-                       child, prev_child, pprev->margin_trbl[END_SIDE(dim)], child_margins[START_SIDE(dim)], gap, x, ix0);
             }
 
-            // 计算 x1：元素结束位置（不包含结束margin）
-            // 注意：ix0 已经包含了起始margin（或合并后的margin），所以这里不需要再加 child_margins[START_SIDE(dim)]
-            if (has_flex_grow)
-                x1 = ix0 + filler;  // flex-grow元素：起始位置 + 额外空间
-            else {
-                // 计算该元素的压缩量（根据flex-shrink权重）
+            if (has_flex_grow) {
+                x1 = ix0 + filler;
+            } else {
                 layx_scalar child_size = (float)child_rect[SIZE_DIM(dim)];
-                float constrained_size;  // 声明约束尺寸变量
-
-                // 计算该元素的内容最小尺寸（不能小于文本或子元素所需空间）
-                layx_scalar min_content_size = 0;
-
-                // 如果是文本节点，测量文本尺寸作为最小内容尺寸
-                if (pchild->measure_text_fn) {
-                    float text_width = 0, text_height = 0;
-                    // 计算文本的最小尺寸（不需要换行）
-                    pchild->measure_text_fn(pchild->measure_text_user_data, 0, 0.0f,
-                                         &text_width, &text_height);
-                    // 根据当前维度选择宽度或高度
-                    min_content_size = (dim == 0) ? text_width : text_height;
-                }
-                // 如果有子元素，计算子元素所需的最小空间
-                else if (pchild->first_child != LAYX_INVALID_ID) {
-                    layx_id grandchild = pchild->first_child;
-                    while (grandchild != LAYX_INVALID_ID) {
-                        layx_item_t *pgrand = layx_get_item(ctx, grandchild);
-                        layx_vec4 grand_rect = ctx->rects[grandchild];
-                        // 修复：不使用位置，只使用尺寸和边距
-                        // 子元素在该维度的总占用：尺寸 + 边距
-                        layx_scalar grand_space = grand_rect[SIZE_DIM(dim)] +
-                                                   pgrand->margin_trbl[START_SIDE(dim)] + pgrand->margin_trbl[END_SIDE(dim)];
-                        // 取最大值作为最小内容尺寸
-                        if (grand_space > min_content_size) {
-                            min_content_size = grand_space;
-                        }
-                        grandchild = pgrand->next_sibling;
-                    }
-                }
-
-                // 加上padding和border和margin（注意：只在没有子元素的情况下才添加）
-                if (pchild->first_child == LAYX_INVALID_ID && !pchild->measure_text_fn) {
-                    min_content_size += pchild->padding_trbl[START_SIDE(dim)] + pchild->padding_trbl[END_SIDE(dim)] +
-                                    pchild->border_trbl[START_SIDE(dim)] + pchild->border_trbl[END_SIDE(dim)];
-                }
-
-                // 如果空间不足且总shrink权重>0，根据flex-shrink进行压缩
-                // 重要：flex-shrink 只在 flex 容器中生效，BLOCK 容器不压缩子项
-                if (is_flex_container && extra_space < 0 && total_shrink_factor > 0.0f && pchild->flex_shrink > 0.0f) {
-                    // 计算该元素的压缩比例：该元素的flex_shrink / 总flex_shrink
-                    float shrink_ratio = pchild->flex_shrink / total_shrink_factor;
-                    // 该元素需要压缩的总量：总不足空间 * 压缩比例
-                    float shrink_amount = (float)extra_space * shrink_ratio;
-                    // 计算压缩后的尺寸
-                    float shrunk_size = (float)child_size + shrink_amount;
-
-                    // 应用 min/max 约束
-                    constrained_size = shrunk_size;
-                    if (dim == 0 && pchild->min_size[0] > 0) {
-                        constrained_size = layx_float_max(constrained_size, (float)pchild->min_size[0]);
-                    }
-                    if (dim == 1 && pchild->min_size[1] > 0) {
-                        constrained_size = layx_float_max(constrained_size, (float)pchild->min_size[1]);
-                    }
-                    if (dim == 0 && pchild->max_size[0] > 0) {
-                        constrained_size = layx_float_min(constrained_size, (float)pchild->max_size[0]);
-                    }
-                    if (dim == 1 && pchild->max_size[1] > 0) {
-                        constrained_size = layx_float_min(constrained_size, (float)pchild->max_size[1]);
-                    }
-
-                    // 确保不小于内容最小尺寸
-                    constrained_size = layx_float_max((float)min_content_size, constrained_size);
-                    x1 = ix0 + constrained_size;
-                } else {
-                    // 不需要压缩，使用原始尺寸，但要确保不小于内容最小尺寸
-                    // 修复：优先使用用户设置的固定宽度，而不是rect中的当前尺寸
-                    float final_size;
-                    uint32_t size_fixed_flag = (dim == 0) ? LAYX_SIZE_FIXED_WIDTH : LAYX_SIZE_FIXED_HEIGHT;
-                    if (child_flags & size_fixed_flag && pchild->size[dim] > 0) {
-                        // 使用用户设置的固定宽度/高度
-                        final_size = (float)pchild->size[dim];
-                    } else {
-                        // 使用rect中的当前尺寸
-                        final_size = (float)child_rect[SIZE_DIM(dim)];
-                    }
-
-                    // 应用 min/max 约束
-                    if (dim == 0 && pchild->min_size[0] > 0) {
-                        final_size = layx_float_max(final_size, (float)pchild->min_size[0]);
-                    }
-                    if (dim == 1 && pchild->min_size[1] > 0) {
-                        final_size = layx_float_max(final_size, (float)pchild->min_size[1]);
-                    }
-                    if (dim == 0 && pchild->max_size[0] > 0) {
-                        final_size = layx_float_min(final_size, (float)pchild->max_size[0]);
-                    }
-                    if (dim == 1 && pchild->max_size[1] > 0) {
-                        final_size = layx_float_min(final_size, (float)pchild->max_size[1]);
-                    }
-
-                    // 确保不小于内容最小尺寸
-                    float final_size_with_content = layx_float_max((float)min_content_size, final_size);
-                    x1 = ix0 + final_size_with_content;
-                }
+                float constrained_size = (float)child_size;
+                x1 = ix0 + constrained_size;
             }
 
             if (wrap)
                 ix1 = (layx_scalar)layx_float_min(max_x2 - (float)child_margins[END_SIDE(dim)], x1);
             else
                 ix1 = (layx_scalar)x1;
+
             child_rect[POINT_DIM(dim)] = ix0;
             child_rect[SIZE_DIM(dim)] = ix1 - ix0;
             ctx->rects[child] = child_rect;
-            // 更新 x：设置为当前子元素的结束位置（不包含结束margin）
+
             x = x1;
-            // 保存当前子元素作为 prev_child，用于下一个子元素的 margin 计算
             prev_child = child;
             child = pchild->next_sibling;
             extra_margin = spacer;
         }
 
         start_child = end_child;
+    }
+}
+
+// Helper to arrange a single child in a block container (with margin collapsing)
+static LAYX_FORCE_INLINE
+void layx_arrange_block_container_single_child(
+            layx_context *ctx, layx_id item, int dim)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    layx_scalar space = layx_get_internal_space(ctx, item, dim);
+    layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
+
+    LAYX_DEBUG_PRINT("DEBUG layx_arrange_block_container_single_child(item=%d, dim=%d): space=%.1f, content_offset=%.1f\n", item, dim, space, content_offset);
+
+    layx_id child = pitem->first_child;
+    if (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        const layx_vec4 child_margins = pchild->margin_trbl;
+        layx_vec4 child_rect = ctx->rects[child];
+        child_rect[POINT_DIM(dim)] = 0;
+
+        float x = (float)content_offset;
+        layx_scalar ix0 = (layx_scalar)(x + child_margins[START_SIDE(dim)]);
+
+        LAYX_DEBUG_PRINT("DEBUG set single child position: child=%d, x=%.1f, margin_start=%.1f, ix0=%.1f\n",
+               child, x, child_margins[START_SIDE(dim)], ix0);
+
+        float final_size = (float)child_rect[SIZE_DIM(dim)];
+        child_rect[POINT_DIM(dim)] = ix0;
+        child_rect[SIZE_DIM(dim)] = final_size;
+        ctx->rects[child] = child_rect;
+    }
+}
+static LAYX_FORCE_INLINE
+void layx_arrange_block_container_multiple_children(
+            layx_context *ctx, layx_id item, int dim, bool wrap)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    layx_scalar content_offset = layx_get_content_offset(ctx, item, dim);
+    layx_scalar space = layx_get_internal_space(ctx, item, dim);
+    
+    // 只对垂直方向进行margin合并
+    bool vertical = (dim == 1);  // 假设dim=1是垂直方向
+    
+    // 跟踪上一个元素的结束margin（用于合并）
+    layx_scalar prev_margin_end = 0;
+    
+    layx_id child = pitem->first_child;
+    layx_scalar current_y = content_offset;
+    
+    while (child != LAYX_INVALID_ID) {
+        layx_item_t *pchild = layx_get_item(ctx, child);
+        layx_vec4 child_rect = ctx->rects[child];
+        const layx_vec4 margins = pchild->margin_trbl;
+        
+        // 计算当前元素的起点
+        layx_scalar margin_start = margins[START_SIDE(dim)];
+        layx_scalar margin_end = margins[END_SIDE(dim)];
+        
+        if (vertical) {
+            // 垂直方向：处理margin合并
+            if (child == pitem->first_child) {
+                // 第一个子元素：可能与父元素的margin-top合并
+                // 这里简化处理，实际更复杂
+                current_y += margin_start;
+            } else {
+                // 与前一个元素的margin合并
+                layx_scalar collapsed_margin = layx_scalar_max(prev_margin_end, margin_start);
+                current_y += collapsed_margin - prev_margin_end;
+            }
+        } else {
+            // 水平方向：不合并，直接相加
+            current_y += margin_start;
+        }
+        
+        // 设置子元素位置
+        child_rect[POINT_DIM(dim)] = current_y;
+        
+        // 更新当前位置（加上子元素高度）
+        current_y += child_rect[SIZE_DIM(dim)];
+        
+        if (vertical) {
+            // 保存当前元素的结束margin（供下一个元素合并使用）
+            prev_margin_end = margin_end;
+        } else {
+            // 水平方向：加上结束margin
+            current_y += margin_end;
+        }
+        
+        // 保存更新后的矩形
+        ctx->rects[child] = child_rect;
+        
+        // 处理换行（如果启用）
+        if (wrap) {
+            // ... 换行逻辑
+        }
+        
+        child = pchild->next_sibling;
+    }
+}
+
+// Dispatcher function:根据容器类型和子元素数量调用相应的专用函数
+static LAYX_FORCE_INLINE
+void layx_arrange_stacked(layx_context *ctx, layx_id item, int dim, bool wrap)
+{
+    layx_item_t *pitem = layx_get_item(ctx, item);
+    const uint32_t item_flags = pitem->flags;
+    int is_flex_container = layx_is_flex_container(item_flags);
+
+    // 判断子元素数量
+    layx_id first_child = pitem->first_child;
+    layx_id second_child = LAYX_INVALID_ID;
+    if (first_child != LAYX_INVALID_ID) {
+        layx_item_t *pfirst_child = layx_get_item(ctx, first_child);
+        second_child = pfirst_child->next_sibling;
+    }
+    bool has_single_child = (second_child == LAYX_INVALID_ID);
+
+    // 根据容器类型和子元素数量调用对应的函数
+    if (is_flex_container) {
+        if (has_single_child) {
+            layx_arrange_flex_container_single_child(ctx, item, dim);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_flex_container_single_child(item=%d, dim=%d) \n", item, dim);
+        } else {
+            layx_arrange_flex_container_multiple_children(ctx, item, dim, wrap);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_flex_container_multiple_children(item=%d, dim=%d, wrap=%d) \n", item, dim, wrap);
+        }
+    } else {
+        // Block容器（包括INLINE_BLOCK）
+        if (has_single_child) {
+            layx_arrange_block_container_single_child(ctx, item, dim);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_block_container_single_child(item=%d, dim=%d) \n", item, dim);
+        } else {
+            layx_arrange_block_container_multiple_children(ctx, item, dim, wrap);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_block_container_multiple_children(item=%d, dim=%d, wrap=%d) \n", item, dim, wrap);
+        }
     }
 }
 
@@ -1533,16 +1615,15 @@ static void layx_align_baseline(layx_context *ctx, layx_id container, int dim)
 }
 // Helper to arrange overlay items (cross-axis alignment)
 static LAYX_FORCE_INLINE
-void layx_arrange_overlay(layx_context *ctx, layx_id item, layx_id prev_sibling, int dim)
+void layx_arrange_overlay(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     // For cross-axis alignment in flex layout, offset should be fixed (start of content-box)
-    // We should NOT use prev_sibling for cross-axis alignment
-    const layx_scalar offset = layx_get_content_offset(ctx, item, LAYX_INVALID_ID, dim);
+    const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
     const layx_scalar space = layx_get_internal_space(ctx, item, dim);
 
-    LAYX_DEBUG_PRINT("DEBUG layx_arrange_overlay: item=%d, dim=%d, prev_sibling=%d, offset=%.1f, space=%.1f\n",
-                   item, dim, prev_sibling, offset, space);
+    LAYX_DEBUG_PRINT("DEBUG layx_arrange_overlay: item=%d, dim=%d=%d, offset=%.1f, space=%.1f\n",
+                   item, dim, offset, space);
 
     // Get align-items for cross-axis alignment
     layx_align_items align_items = (layx_align_items)(pitem->flags & LAYX_ALIGN_ITEMS_MASK);
@@ -1647,13 +1728,13 @@ void layx_arrange_overlay_squeezed_range(
 // This handles cross-axis alignment for wrapped flex layouts (flex-wrap)
 static LAYX_FORCE_INLINE
 layx_scalar layx_arrange_wrapped_overlay_squeezed(
-        layx_context *ctx, layx_id item, layx_id prev_sibling,int dim)
+        layx_context *ctx, layx_id item,int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
     layx_align_content align_content = (layx_align_content)(pitem->flags & LAYX_ALIGN_CONTENT_MASK);
     layx_align_items align_items = (layx_align_items)(pitem->flags & LAYX_ALIGN_ITEMS_MASK);
     
-    layx_scalar offset = layx_get_content_offset(ctx, item, prev_sibling, dim);
+    layx_scalar offset = layx_get_content_offset(ctx, item, dim);
     const layx_scalar space = layx_get_internal_space(ctx, item, dim);
     
     // Collect all rows to apply align-content later
@@ -1772,17 +1853,17 @@ layx_scalar layx_arrange_wrapped_overlay_squeezed(
 
 // 独立的 block 布局函数
 // BLOCK: 元素独占一行，子元素在水平方向上叠加，在垂直方向上堆叠
-static void layx_arrange_block(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim)
+static void layx_arrange_block(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     if (dim == 1) {
         // Y 轴（垂直方向）：使用 stacked（堆叠）- 子元素从上到下排列
-        layx_arrange_stacked(ctx, item, prev_sibling,dim, false);
+        layx_arrange_stacked(ctx, item,dim, false);
     } else {
         // X 轴（水平方向）：使用 overlay（叠加）- 子元素左对齐
         // 对于 BLOCK，子元素宽度由 padding-box 决定，需要考虑 margin
-        const layx_scalar offset = layx_get_content_offset(ctx, item,prev_sibling, dim);
+        const layx_scalar offset = layx_get_content_offset(ctx, item, dim);
         const layx_scalar space = layx_get_internal_space(ctx, item, dim);
 
         LAYX_DEBUG_PRINT("DEBUG layx_arrange_block(item=%d, dim=0): offset=%.1f, space=%.1f\n", item, offset, space);
@@ -1822,7 +1903,7 @@ static void layx_arrange_block(layx_context *ctx, layx_id item,layx_id prev_sibl
 
 // Inline 布局函数
 // INLINE: 元素在一行内排列，宽度由内容决定
-static void layx_arrange_inline(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim)
+static void layx_arrange_inline(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
 
@@ -1830,7 +1911,7 @@ static void layx_arrange_inline(layx_context *ctx, layx_id item,layx_id prev_sib
     // 子元素在一行内排列，如果超出宽度则换行
     if (dim == 0) {
         // X 轴（水平方向）：子元素从左到右排列
-        const layx_scalar offset = layx_get_content_offset(ctx, item, prev_sibling,0);
+        const layx_scalar offset = layx_get_content_offset(ctx, item,0);
         const layx_scalar space = layx_get_internal_space(ctx, item, 0);
 
         float x = (float)offset;
@@ -1888,20 +1969,20 @@ static void layx_arrange_inline(layx_context *ctx, layx_id item,layx_id prev_sib
         }
     } else {
         // Y 轴（垂直方向）：使用 overlay（叠加）
-        layx_arrange_overlay(ctx, item,prev_sibling, 1);
+        layx_arrange_overlay(ctx, item, 1);
     }
 }
 
 // Inline-block 布局函数
 // INLINE_BLOCK: 元素在一行内排列，但可以设置宽高
-static void layx_arrange_inline_block(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim)
+static void layx_arrange_inline_block(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
 
     // INLINE_BLOCK 元素在一行内排列，支持设置宽高
     if (dim == 0) {
         // X 轴（水平方向）：子元素从左到右排列
-        const layx_scalar offset = layx_get_content_offset(ctx, item,prev_sibling, 0);
+        const layx_scalar offset = layx_get_content_offset(ctx, item, 0);
         const layx_scalar space = layx_get_internal_space(ctx, item, 0);
 
         float x = (float)offset;
@@ -1959,12 +2040,12 @@ static void layx_arrange_inline_block(layx_context *ctx, layx_id item,layx_id pr
         }
     } else {
         // Y 轴（垂直方向）：使用 overlay（叠加）
-        layx_arrange_overlay(ctx, item, prev_sibling, 1);
+        layx_arrange_overlay(ctx, item, 1);
     }
 }
 
 // PHASE 2: Arrange items (second pass)
-static void layx_arrange(layx_context *ctx, layx_id item,layx_id prev_sibling, int dim)
+static void layx_arrange(layx_context *ctx, layx_id item, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
 
@@ -1975,14 +2056,14 @@ static void layx_arrange(layx_context *ctx, layx_id item,layx_id prev_sibling, i
     
     // 根据不同的 display 类型调用不同的布局函数
     switch (display) {
-        case LAYX_DISPLAY_BLOCK:
-            layx_arrange_block(ctx, item,prev_sibling, dim);
-            break;
+       
         case LAYX_DISPLAY_INLINE:
-            layx_arrange_inline(ctx, item,prev_sibling, dim);
+            layx_arrange_inline(ctx, item, dim);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_inline(item=%d, dim=%d, display=%d) \n", item, dim, display);
             break;
         case LAYX_DISPLAY_INLINE_BLOCK:
-            layx_arrange_inline_block(ctx, item, prev_sibling,dim);
+            layx_arrange_inline_block(ctx, item,dim);
+            LAYX_DEBUG_PRINT("DEBUG: layx_arrange_inline_block(item=%d, dim=%d, display=%d) \n", item, dim, display);
             break;
         case LAYX_DISPLAY_FLEX: {
             bool is_row_direction = (direction == LAYX_FLEX_DIRECTION_ROW || direction == LAYX_FLEX_DIRECTION_ROW_REVERSE);
@@ -1991,41 +2072,39 @@ static void layx_arrange(layx_context *ctx, layx_id item,layx_id prev_sibling, i
             if (is_wrapped) {
                 if (is_row_direction) {
                     if (dim == 0) {
-                        layx_arrange_stacked(ctx, item,prev_sibling, 0, true);
+                        layx_arrange_stacked(ctx, item, 0, true);
                     } else {
-                        layx_arrange_wrapped_overlay_squeezed(ctx, item, prev_sibling,1);
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item,1);
                     }
                 } else {
                     if (dim == 1) {
-                        layx_arrange_stacked(ctx, item,prev_sibling, 1, true);
-                        layx_arrange_wrapped_overlay_squeezed(ctx, item, prev_sibling,0);
+                        layx_arrange_stacked(ctx, item, 1, true);
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item,0);
                     } else {
-                        layx_arrange_wrapped_overlay_squeezed(ctx, item, prev_sibling,0);
+                        layx_arrange_wrapped_overlay_squeezed(ctx, item,0);
                     }
                 }
             } else {
                 if ((is_row_direction && dim == 0) || (!is_row_direction && dim == 1)) {
-                    layx_arrange_stacked(ctx, item,prev_sibling, dim, false);
+                    layx_arrange_stacked(ctx, item, dim, false);
                 } else {
                     // Use layx_arrange_overlay for cross-axis alignment (align-items)
-                    layx_arrange_overlay(ctx, item, prev_sibling,dim);
+                    layx_arrange_overlay(ctx, item,dim);
                 }
             }
             break;
         }
         default:
-            // 未知类型，默认使用 block 布局
-            layx_arrange_block(ctx, item,prev_sibling, dim);
-            break;
+        case LAYX_DISPLAY_BLOCK:
+           layx_arrange_block(ctx, item, dim);
+           LAYX_DEBUG_PRINT("DEBUG: layx_arrange_block(item=%d, dim=%d, display=%d) \n", item, dim, display);
+           break;
     }
     
     // 递归处理子项
-    layx_id prev = LAYX_INVALID_ID;
     layx_id child = pitem->first_child;
-    LAYX_DEBUG_PRINT("DEBUG: layx_arrange(item=%d, dim=%d, display=%d) -> first_child=%d\n", item, dim, display, child);
     while (child != LAYX_INVALID_ID) {
-        layx_arrange(ctx, child,prev, dim);
-        prev = child;
+        layx_arrange(ctx, child, dim);
         child = layx_next_sibling(ctx, child);
     }
 }
