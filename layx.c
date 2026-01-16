@@ -125,9 +125,12 @@ void layx_dump_tree(layx_context *layout_ctx, layx_id layout_id, int indent){
     const char* overflow_x_str = layx_get_overflow_string((layx_overflow)item->overflow_x);
     const char* overflow_y_str = layx_get_overflow_string((layx_overflow)item->overflow_y);
 
-    printf("%*s<lay_item_%d: xywh=[%.2f, %.2f, %.2f, %.2f] margin=[%.2f, %.2f, %.2f, %.2f] padding=[%.2f, %.2f, %.2f, %.2f]>\n",
+    printf("%*s<lay_item_%d: xywh=[%.1f, %.1f, %.1f, %.1f] margin=[%.1f, %.1f, %.1f, %.1f] padding=[%.1f, %.1f, %.1f, %.1f]",
         indent, "", layout_id, x, y, width, height, l, t, r, b, padding_l, padding_t, padding_r, padding_b);
-    printf("%*sPROP=%s|overflow-x:%s|overflow-y:%s\n",indent, "",layx_get_layout_properties_string(layout_ctx, layout_id), overflow_x_str, overflow_y_str);
+    printf(" PROP=%s|overflow-x:%s|overflow-y:%s",layx_get_layout_properties_string(layout_ctx, layout_id), overflow_x_str, overflow_y_str);
+    bool fixed_width = item->flags & LAYX_SIZE_FIXED_WIDTH;
+    bool fixed_height = item->flags & LAYX_SIZE_FIXED_HEIGHT;
+    printf(" inital_w=%.1f inital_h=%.1f fixed_width:%s fixed_height=%s>\n",item->size[0],item->size[1], fixed_width ? "YES" : "NO", fixed_height ? "YES" : "NO");
     layx_id child = item->first_child;
     while (child != LAYX_INVALID_ID) {
         layx_dump_tree(layout_ctx, child, indent + 2);
