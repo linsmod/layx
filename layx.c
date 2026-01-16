@@ -1610,31 +1610,130 @@ void layx_arrange_overlay_squeezed_range(
 }
 
 // Helper to arrange wrapped overlay squeezed
+// This handles cross-axis alignment for wrapped flex layouts (flex-wrap)
 static LAYX_FORCE_INLINE
 layx_scalar layx_arrange_wrapped_overlay_squeezed(
         layx_context *ctx, layx_id item, layx_id prev_sibling,int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    layx_scalar offset = layx_get_content_offset(ctx, item,prev_sibling, dim);
-    layx_scalar need_size = 0;
+    layx_align_content align_content = (layx_align_content)(pitem->flags & LAYX_ALIGN_CONTENT_MASK);
+    layx_align_items align_items = (layx_align_items)(pitem->flags & LAYX_ALIGN_ITEMS_MASK);
+    
+    layx_scalar offset = layx_get_content_offset(ctx, item, prev_sibling, dim);
+    const layx_scalar space = layx_get_internal_space(ctx, item, dim);
+    
+    // Collect all rows to apply align-content later
+    struct {
+        layx_id start_child;
+        layx_id end_child;
+        layx_scalar row_size;
+        layx_scalar row_offset;
+    } rows[32];
+    int row_count = 0;
+    
     layx_id child = pitem->first_child;
     layx_id start_child = child;
-    while (child != LAYX_INVALID_ID) {
+    layx_scalar need_size = 0;
+    
+    // Phase 1: Collect row information
+    while (child != LAYX_INVALID_ID && row_count < 32) {
         layx_item_t *pchild = layx_get_item(ctx, child);
-        if (pchild->flags & LAYX_BREAK) {
-            layx_arrange_overlay_squeezed_range(ctx, dim, start_child, child, offset, need_size);
-            offset += need_size;
-            start_child = child;
+        if (pchild->flags & LAYX_BREAK || row_count == 0) {
+            // Save previous row (except for first row)
+            if (row_count > 0) {
+                rows[row_count - 1].end_child = child;
+                rows[row_count - 1].row_size = need_size;
+            }
+            
+            // Start new row
+            rows[row_count].start_child = child;
+            rows[row_count].end_child = LAYX_INVALID_ID;
+            rows[row_count].row_size = 0;
+            rows[row_count].row_offset = offset + (row_count > 0 ? rows[row_count - 1].row_size : 0);
+            
             need_size = 0;
         }
+        
         const layx_vec4 rect = ctx->rects[child];
         layx_scalar child_size = rect[POINT_DIM(dim)] + rect[SIZE_DIM(dim)] + pchild->margin_trbl[END_SIDE(dim)];
         need_size = layx_scalar_max(need_size, child_size);
+        
         child = pchild->next_sibling;
+        
+        // If this was the last child, save the final row
+        if (child == LAYX_INVALID_ID) {
+            rows[row_count].end_child = child;
+            rows[row_count].row_size = need_size;
+        }
+        
+        row_count++;
     }
-    layx_arrange_overlay_squeezed_range(ctx, dim, start_child, LAYX_INVALID_ID, offset, need_size);
-    offset += need_size;
-    return offset;
+    
+    // Phase 2: Apply align-content to position rows
+    layx_scalar total_rows_height = 0;
+    for (int i = 0; i < row_count; i++) {
+        total_rows_height += rows[i].row_size;
+    }
+    
+    layx_scalar available_space_for_rows = space - total_rows_height;
+    layx_scalar row_start_offset = offset;
+    
+    switch (align_content) {
+        case LAYX_ALIGN_CONTENT_CENTER:
+            row_start_offset = offset + available_space_for_rows / 2;
+            break;
+        case LAYX_ALIGN_CONTENT_FLEX_END:
+            row_start_offset = offset + available_space_for_rows;
+            break;
+        case LAYX_ALIGN_CONTENT_SPACE_BETWEEN:
+            // Space is distributed between rows, not before/after
+            // Handled in the loop below
+            break;
+        case LAYX_ALIGN_CONTENT_SPACE_AROUND:
+            // Space is distributed around rows
+            // Handled in the loop below
+            break;
+        case LAYX_ALIGN_CONTENT_FLEX_START:
+        case LAYX_ALIGN_CONTENT_STRETCH:
+        default:
+            // FLEX_START and STRETCH: no extra spacing
+            break;
+    }
+    
+    // Phase 3: Position rows with align-content spacing
+    layx_scalar current_offset = row_start_offset;
+    for (int i = 0; i < row_count; i++) {
+        rows[i].row_offset = current_offset;
+        
+        // Calculate spacing for this row based on align-content
+        if (align_content == LAYX_ALIGN_CONTENT_SPACE_BETWEEN) {
+            if (i > 0) {
+                layx_scalar gap = available_space_for_rows / (layx_scalar)(row_count - 1);
+                current_offset += gap;
+            }
+            rows[i].row_offset = current_offset;
+        } else if (align_content == LAYX_ALIGN_CONTENT_SPACE_AROUND) {
+            layx_scalar gap = available_space_for_rows / (layx_scalar)row_count;
+            current_offset += gap;
+            rows[i].row_offset = current_offset;
+        } else if (align_content == LAYX_ALIGN_CONTENT_STRETCH) {
+            // Stretch rows to fill available space
+            if (row_count > 0) {
+                layx_scalar stretched_row_height = space / (layx_scalar)row_count;
+                rows[i].row_size = layx_scalar_max(rows[i].row_size, stretched_row_height);
+            }
+        }
+        
+        current_offset += rows[i].row_size;
+    }
+    
+    // Phase 4: Apply align-items/align-self to each row
+    for (int i = 0; i < row_count; i++) {
+        // Apply alignment to children in this row
+        layx_arrange_overlay_squeezed_range(ctx, dim, rows[i].start_child, rows[i].end_child, rows[i].row_offset, rows[i].row_size);
+    }
+    
+    return offset + total_rows_height + available_space_for_rows;
 }
 
 // 独立的 block 布局函数
