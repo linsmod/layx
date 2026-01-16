@@ -125,12 +125,12 @@ void layx_dump_tree(layx_context *layout_ctx, layx_id layout_id, int indent){
     const char* overflow_x_str = layx_get_overflow_string((layx_overflow)item->overflow_x);
     const char* overflow_y_str = layx_get_overflow_string((layx_overflow)item->overflow_y);
 
-    printf("%*s<lay_item_%d: xywh=[%.1f, %.1f, %.1f, %.1f] margin=[%.1f, %.1f, %.1f, %.1f] padding=[%.1f, %.1f, %.1f, %.1f]",
+    LAYX_DEBUG_PRINT("%*s<lay_item_%d: xywh=[%.1f, %.1f, %.1f, %.1f] margin=[%.1f, %.1f, %.1f, %.1f] padding=[%.1f, %.1f, %.1f, %.1f]",
         indent, "", layout_id, x, y, width, height, l, t, r, b, padding_l, padding_t, padding_r, padding_b);
-    printf(" PROP=%s|overflow-x:%s|overflow-y:%s",layx_get_layout_properties_string(layout_ctx, layout_id), overflow_x_str, overflow_y_str);
+    LAYX_DEBUG_PRINT(" PROP=%s|overflow-x:%s|overflow-y:%s",layx_get_layout_properties_string(layout_ctx, layout_id), overflow_x_str, overflow_y_str);
     bool fixed_width = item->flags & LAYX_SIZE_FIXED_WIDTH;
     bool fixed_height = item->flags & LAYX_SIZE_FIXED_HEIGHT;
-    printf(" initial_w=%.1f initial_h=%.1f fixed_width:%s fixed_height=%s>\n",item->size[0],item->size[1], fixed_width ? "YES" : "NO", fixed_height ? "YES" : "NO");
+    LAYX_DEBUG_PRINT(" initial_w=%.1f initial_h=%.1f fixed_width:%s fixed_height=%s>\n",item->size[0],item->size[1], fixed_width ? "YES" : "NO", fixed_height ? "YES" : "NO");
     layx_id child = item->first_child;
     while (child != LAYX_INVALID_ID) {
         layx_dump_tree(layout_ctx, child, indent + 2);
@@ -977,29 +977,41 @@ layx_scalar layx_calc_stacked_size(
     layx_id child = pitem->first_child;
     layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
 
+    const uint32_t item_flags = pitem->flags;
+    int is_flex_container = layx_is_flex_container(item_flags);
+
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-        
-        // 正确处理margin合并：相邻margin取最大值，而不是简单叠加
+
+        // 正确处理margin合并：
+        // 对于 flex 容器：margin 不合并，直接相加
+        // 对于 block 容器：margin 合并，取最大值
         if (prev_child == LAYX_INVALID_ID) {
             // 第一个子项：累加其起始margin
             need_size += pchild->margin_trbl[START_SIDE(dim)];
         } else {
-            // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+            // 非第一个子项：累加与上一个子项之间的边距
             layx_item_t *pprev = layx_get_item(ctx, prev_child);
-            layx_scalar gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], pchild->margin_trbl[START_SIDE(dim)]);
+            layx_scalar gap;
+            if (is_flex_container) {
+                // Flex 容器：margin 不合并，相邻 margin 相加
+                gap = pprev->margin_trbl[END_SIDE(dim)] + pchild->margin_trbl[START_SIDE(dim)];
+            } else {
+                // Block 容器：margin 合并，取最大值
+                gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], pchild->margin_trbl[START_SIDE(dim)]);
+            }
             need_size += gap;
         }
-        
+
         // 累加子项尺寸
         need_size += rect[SIZE_DIM(dim)];
-        
+
         // 如果是最后一个子项，累加其结束margin
         if (pchild->next_sibling == LAYX_INVALID_ID) {
             need_size += pchild->margin_trbl[END_SIDE(dim)];
         }
-        
+
         prev_child = child;
         child = pchild->next_sibling;
     }
@@ -1041,30 +1053,42 @@ layx_scalar layx_calc_wrapped_stacked_size(
     layx_id child = pitem->first_child;
     layx_id prev_child = LAYX_INVALID_ID;  // 用于记录上一个子项，正确处理margin合并
 
+    const uint32_t item_flags = pitem->flags;
+    int is_flex_container = layx_is_flex_container(item_flags);
+
     while (child != LAYX_INVALID_ID) {
         layx_item_t *pchild = layx_get_item(ctx, child);
         layx_vec4 rect = ctx->rects[child];
-        
+
         if (pchild->flags & LAYX_BREAK) {
             need_size2 = layx_scalar_max(need_size2, need_size);
             need_size = 0;
             prev_child = LAYX_INVALID_ID;  // 换行后重置prev_child
         }
-        
-        // 正确处理margin合并：相邻margin取最大值，而不是简单叠加
+
+        // 正确处理margin合并：
+        // 对于 flex 容器：margin 不合并，直接相加
+        // 对于 block 容器：margin 合并，取最大值
         if (prev_child == LAYX_INVALID_ID) {
             // 第一个子项（或换行后的第一个）：累加其起始margin
             need_size += pchild->margin_trbl[START_SIDE(dim)];
         } else {
-            // 非第一个子项：累加与上一个子项之间的边距（取最大值）
+            // 非第一个子项：累加与上一个子项之间的边距
             layx_item_t *pprev = layx_get_item(ctx, prev_child);
-            layx_scalar gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], pchild->margin_trbl[START_SIDE(dim)]);
+            layx_scalar gap;
+            if (is_flex_container) {
+                // Flex 容器：margin 不合并，相邻 margin 相加
+                gap = pprev->margin_trbl[END_SIDE(dim)] + pchild->margin_trbl[START_SIDE(dim)];
+            } else {
+                // Block 容器：margin 合并，取最大值
+                gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], pchild->margin_trbl[START_SIDE(dim)]);
+            }
             need_size += gap;
         }
-        
+
         // 累加子项尺寸
         need_size += rect[SIZE_DIM(dim)];
-        
+
         // 如果是最后一个子项或换行前的最后一个子项，累加其结束margin
         if (pchild->next_sibling == LAYX_INVALID_ID || 
             (layx_get_item(ctx, pchild->next_sibling)->flags & LAYX_BREAK)) {
@@ -1201,7 +1225,7 @@ void layx_arrange_stacked(
         // 用于计算flex-shrink权重
         float total_shrink_factor = 0.0f;
 
-        printf("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
+        LAYX_DEBUG_PRINT("DEBUG layx_arrange_stacked(item=%d, dim=%d): start_child=%d, space=%.1f, content_offset=%.1f\n", item, dim, start_child, space, content_offset);
 
         layx_id child = start_child;
         layx_id end_child = LAYX_INVALID_ID;
@@ -1326,12 +1350,22 @@ void layx_arrange_stacked(
                 LAYX_DEBUG_PRINT("DEBUG: child=%d, prev=INVALID, ix0=x(%.1f)+margin_start(%.1f)=%.1f\n",
                        child, x, child_margins[START_SIDE(dim)], ix0);
             } else {
-                // 非第一个子项：使用合并后的margin（取最大值）
+                // 非第一个子项：计算 gap
                 // x 当前位置是上一个子元素的结束位置（不包括margin）
-                // 所以需要加上合并后的 gap
+                // 对于 flex 容器：margin 不合并，直接相加
+                // 对于 block 容器：margin 合并，取最大值
                 layx_item_t *pprev = layx_get_item(ctx, prev_child);
-                layx_scalar gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], child_margins[START_SIDE(dim)]);
+                layx_scalar gap;
+                if (is_flex_container) {
+                    // Flex 容器：margin 不合并，相邻 margin 相加
+                    gap = pprev->margin_trbl[END_SIDE(dim)] + child_margins[START_SIDE(dim)];
+                } else {
+                    // Block 容器：margin 合并，取最大值
+                    gap = layx_scalar_max(pprev->margin_trbl[END_SIDE(dim)], child_margins[START_SIDE(dim)]);
+                }
                 ix0 = (layx_scalar)(x + gap);
+                LAYX_DEBUG_PRINT("DEBUG: child=%d, prev=%d, prev_end_margin=%.1f, curr_start_margin=%.1f, gap=%.1f, ix0=x(%.1f)+gap=%.1f\n",
+                       child, prev_child, pprev->margin_trbl[END_SIDE(dim)], child_margins[START_SIDE(dim)], gap, x, ix0);
             }
 
             // 计算 x1：元素结束位置（不包含结束margin）

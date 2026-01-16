@@ -26,7 +26,7 @@
 // Debug output control
 // Define LAYX_DEBUG=1 to enable debug output
 #ifndef LAYX_DEBUG
-#define LAYX_DEBUG 0
+#define LAYX_DEBUG 1
 #endif
 
 #if LAYX_DEBUG
