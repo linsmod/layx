@@ -1136,7 +1136,8 @@ static void layx_calc_size(layx_context *ctx, layx_id item, layx_id prev_sibling
                 cal_size = layx_calc_overlayed_size(ctx, item, dim);
             }
         } else if (display == LAYX_DISPLAY_INLINE) {
-            // DISPLAY_INLINE: 宽度由内容决定，使用 overlayed size
+            // DISPLAY_INLINE: 宽度和高度都使用 overlayed size（取最大值）
+            // inline元素的内容在同一行上，尺寸由最大的子元素决定
             cal_size = layx_calc_overlayed_size(ctx, item, dim);
         } else {
             // 默认情况，使用 block 布局
@@ -1501,8 +1502,13 @@ static LAYX_FORCE_INLINE
 void layx_arrange_overlay(layx_context *ctx, layx_id item, layx_id prev_sibling, int dim)
 {
     layx_item_t *pitem = layx_get_item(ctx, item);
-    const layx_scalar offset = layx_get_content_offset(ctx, item,prev_sibling, dim);
+    // For cross-axis alignment in flex layout, offset should be fixed (start of content-box)
+    // We should NOT use prev_sibling for cross-axis alignment
+    const layx_scalar offset = layx_get_content_offset(ctx, item, LAYX_INVALID_ID, dim);
     const layx_scalar space = layx_get_internal_space(ctx, item, dim);
+
+    LAYX_DEBUG_PRINT("DEBUG layx_arrange_overlay: item=%d, dim=%d, prev_sibling=%d, offset=%.1f, space=%.1f\n",
+                   item, dim, prev_sibling, offset, space);
 
     // Get align-items for cross-axis alignment
     layx_align_items align_items = (layx_align_items)(pitem->flags & LAYX_ALIGN_ITEMS_MASK);
@@ -1516,45 +1522,68 @@ void layx_arrange_overlay(layx_context *ctx, layx_id item, layx_id prev_sibling,
         // Check if child has explicit align-self
         layx_align_self align_self = (layx_align_self)(pchild->flags & LAYX_ALIGN_SELF_MASK);
 
-        // Determine effective align (use child's align-self if set, otherwise use container's align-items)
-        uint32_t align;
-        if (align_self != LAYX_ALIGN_SELF_AUTO) {
-            align = align_self;
-        } else {
-            align = (uint32_t)align_items;
-        }
-
         // Apply alignment
-        if (align_items == LAYX_ALIGN_ITEMS_BASELINE) {
+        // First, check baseline (only for align-items, not for align-self)
+        if (align_items == LAYX_ALIGN_ITEMS_BASELINE && align_self == LAYX_ALIGN_SELF_AUTO) {
             layx_align_baseline(ctx, item, dim);
             return;
         }
-        else if (align == LAYX_ALIGN_ITEMS_CENTER || align == LAYX_ALIGN_SELF_CENTER) {
-            // CENTER: center in available space
-            child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)] + (space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)]) / 2;
-        } else if (align == LAYX_ALIGN_ITEMS_FLEX_END || align == LAYX_ALIGN_SELF_FLEX_END) {
-            // FLEX_END: align to bottom/right
-            child_rect[POINT_DIM(dim)] = offset + space - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)];
-        } else if (align == LAYX_ALIGN_ITEMS_STRETCH || align == LAYX_ALIGN_SELF_STRETCH) {
-            // STRETCH: fill available space only if child doesn't have fixed size in cross-axis
-            // For dim=0 (x-axis), check if child has fixed width
-            // For dim=1 (y-axis), check if child has fixed height
-            bool has_fixed_size = false;
-            if (dim == 0) {
-                // X-axis: check for fixed width (cross-axis for column flex)
-                has_fixed_size = (pchild->flags & LAYX_SIZE_FIXED_WIDTH) != 0;
-            } else {
-                // Y-axis: check for fixed height (cross-axis for row flex)
-                has_fixed_size = (pchild->flags & LAYX_SIZE_FIXED_HEIGHT) != 0;
+
+        // Determine alignment behavior based on align-self or align-items
+        if (align_self != LAYX_ALIGN_SELF_AUTO) {
+            // Child has explicit align-self - use it
+            switch (align_self) {
+                case LAYX_ALIGN_SELF_CENTER:
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)] + 
+                        (space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)]) / 2;
+                    LAYX_DEBUG_PRINT("DEBUG CENTER (align-self): item=%d, child=%d, offset=%.1f, space=%.1f, child_h=%.1f, margin_top=%.1f, margin_bottom=%.1f\n",
+                                   item, child, offset, space, child_rect[SIZE_DIM(dim)], child_margins[START_SIDE(dim)], child_margins[END_SIDE(dim)]);
+                    break;
+                case LAYX_ALIGN_SELF_FLEX_END:
+                    child_rect[POINT_DIM(dim)] = offset + space - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)];
+                    break;
+                case LAYX_ALIGN_SELF_STRETCH: {
+                    bool has_fixed_size = (dim == 0) ? 
+                        ((pchild->flags & LAYX_SIZE_FIXED_WIDTH) != 0) :
+                        ((pchild->flags & LAYX_SIZE_FIXED_HEIGHT) != 0);
+                    if (!has_fixed_size) {
+                        child_rect[SIZE_DIM(dim)] = layx_scalar_max(0, space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)]);
+                    }
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
+                    break;
+                }
+                case LAYX_ALIGN_SELF_FLEX_START:
+                default:
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
+                    break;
             }
-            if (!has_fixed_size) {
-                child_rect[SIZE_DIM(dim)] = layx_scalar_max(0, space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)]);
+        } else {
+            // Child uses parent's align-items
+            switch (align_items) {
+                case LAYX_ALIGN_ITEMS_CENTER:
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)] + 
+                        (space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)]) / 2;
+                    LAYX_DEBUG_PRINT("DEBUG CENTER (align-items): item=%d, child=%d, offset=%.1f, space=%.1f, child_h=%.1f, margin_top=%.1f, margin_bottom=%.1f\n",
+                                   item, child, offset, space, child_rect[SIZE_DIM(dim)], child_margins[START_SIDE(dim)], child_margins[END_SIDE(dim)]);
+                    break;
+                case LAYX_ALIGN_ITEMS_FLEX_END:
+                    child_rect[POINT_DIM(dim)] = offset + space - child_margins[END_SIDE(dim)] - child_rect[SIZE_DIM(dim)];
+                    break;
+                case LAYX_ALIGN_ITEMS_STRETCH: {
+                    bool has_fixed_size = (dim == 0) ? 
+                        ((pchild->flags & LAYX_SIZE_FIXED_WIDTH) != 0) :
+                        ((pchild->flags & LAYX_SIZE_FIXED_HEIGHT) != 0);
+                    if (!has_fixed_size) {
+                        child_rect[SIZE_DIM(dim)] = layx_scalar_max(0, space - child_margins[START_SIDE(dim)] - child_margins[END_SIDE(dim)]);
+                    }
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
+                    break;
+                }
+                case LAYX_ALIGN_ITEMS_FLEX_START:
+                default:
+                    child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
+                    break;
             }
-            child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
-        }
-        // FLEX_START and BASELINE use default position (already at 0 relative to offset)
-        else {
-            child_rect[POINT_DIM(dim)] = offset + child_margins[START_SIDE(dim)];
         }
         ctx->rects[child] = child_rect;
         child = pchild->next_sibling;
@@ -1881,6 +1910,8 @@ const char* layx_get_layout_properties_string(layx_context *ctx, layx_id item)
     switch (display) {
         case LAYX_DISPLAY_BLOCK: len += snprintf(buf + len, sizeof(buf) - len, "display:BLOCK"); break;
         case LAYX_DISPLAY_FLEX: len += snprintf(buf + len, sizeof(buf) - len, "display:FLEX"); break;
+        case LAYX_DISPLAY_INLINE_BLOCK: len += snprintf(buf + len, sizeof(buf) - len, "display:INLINE_BLOCK"); break;
+        case LAYX_DISPLAY_INLINE: len += snprintf(buf + len, sizeof(buf) - len, "display:INLINE"); break;
         default: len += snprintf(buf + len, sizeof(buf) - len, "display:INVALID(%d)", display); break;
     }
     
