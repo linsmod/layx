@@ -1357,8 +1357,9 @@ void layx_arrange_stacked(
                     while (grandchild != LAYX_INVALID_ID) {
                         layx_item_t *pgrand = layx_get_item(ctx, grandchild);
                         layx_vec4 grand_rect = ctx->rects[grandchild];
-                        // 子元素在该维度的总占用：位置 + 尺寸 + 边距
-                        layx_scalar grand_space = grand_rect[POINT_DIM(dim)] + grand_rect[SIZE_DIM(dim)] +
+                        // 修复：不使用位置，只使用尺寸和边距
+                        // 子元素在该维度的总占用：尺寸 + 边距
+                        layx_scalar grand_space = grand_rect[SIZE_DIM(dim)] +
                                                    pgrand->margin_trbl[START_SIDE(dim)] + pgrand->margin_trbl[END_SIDE(dim)];
                         // 取最大值作为最小内容尺寸
                         if (grand_space > min_content_size) {
@@ -1404,7 +1405,16 @@ void layx_arrange_stacked(
                     x1 = ix0 + constrained_size;
                 } else {
                     // 不需要压缩，使用原始尺寸，但要确保不小于内容最小尺寸
-                    float final_size = (float)child_rect[SIZE_DIM(dim)];
+                    // 修复：优先使用用户设置的固定宽度，而不是rect中的当前尺寸
+                    float final_size;
+                    uint32_t size_fixed_flag = (dim == 0) ? LAYX_SIZE_FIXED_WIDTH : LAYX_SIZE_FIXED_HEIGHT;
+                    if (child_flags & size_fixed_flag && pchild->size[dim] > 0) {
+                        // 使用用户设置的固定宽度/高度
+                        final_size = (float)pchild->size[dim];
+                    } else {
+                        // 使用rect中的当前尺寸
+                        final_size = (float)child_rect[SIZE_DIM(dim)];
+                    }
 
                     // 应用 min/max 约束
                     if (dim == 0 && pchild->min_size[0] > 0) {

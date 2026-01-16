@@ -86,6 +86,12 @@ add_executable(test_last_child_margin_advanced
 )
 target_link_libraries(test_last_child_margin_advanced layx)
 
+# Multiple layout runs test
+add_executable(test_multiple_layout_runs
+    test_multiple_layout_runs.c
+)
+target_link_libraries(test_multiple_layout_runs layx)
+
 # 设置包含目录
 target_include_directories(test_layx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_layout_patterns PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -100,6 +106,7 @@ target_include_directories(test_margin_merge PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(test_destroy PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_last_child_margin PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(test_last_child_margin_advanced PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(test_multiple_layout_runs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 设置编译选项
 if(MSVC)
@@ -125,6 +132,7 @@ else()
     target_compile_options(test_destroy PRIVATE -Wall -Wextra)
     target_compile_options(test_last_child_margin PRIVATE -Wall -Wextra)
     target_compile_options(test_last_child_margin_advanced PRIVATE -Wall -Wextra)
+    target_compile_options(test_multiple_layout_runs PRIVATE -Wall -Wextra)
 endif()
 
 # 使用生成器表达式来获取可执行文件的完整路径
@@ -151,7 +159,9 @@ add_custom_target(tests
     COMMAND $<TARGET_FILE:test_margin_merge>
     COMMAND echo "Running test_destroy..."
     COMMAND $<TARGET_FILE:test_destroy>
-    DEPENDS test_layx test_layout_patterns test_defaults test_block_margin test_flex_margin test_scroll test_scroll_max test_display_types test_hit_test test_margin_merge test_destroy
+    COMMAND echo "Running test_multiple_layout_runs..."
+    COMMAND $<TARGET_FILE:test_multiple_layout_runs>
+    DEPENDS test_layx test_layout_patterns test_defaults test_block_margin test_flex_margin test_scroll test_scroll_max test_display_types test_hit_test test_margin_merge test_destroy test_multiple_layout_runs
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all layout tests"
 )

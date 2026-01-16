@@ -9,3 +9,14 @@ debug_spacebetween
 *.json
 debug_test9
 test_web_api
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.a
+test_*
+!test_*.c
+test_child_width_growth
+test_child_width_growth_exact
+test_multiple_layout_runs
+
