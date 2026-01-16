@@ -1512,7 +1512,7 @@ void layx_arrange_block_container_multiple_children(
         }
         
         // 设置子元素位置
-        child_rect[POINT_DIM(dim)] = current_y;
+        child_rect[POINT_DIM(dim)] = current_y+prev_margin_end;
         
         // 更新当前位置（加上子元素高度）
         current_y += child_rect[SIZE_DIM(dim)];
